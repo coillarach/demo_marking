@@ -95,12 +95,67 @@ function getCriterionMark(array $r, string $key): float {
     };
 }
 
+function kqCriterionFeedback(array $r, string $criterion): string {
+    $kqMap   = KQ_CRITERION_MAP;
+    $kqBank  = KNOWLEDGE_QUESTIONS;
+    $kqData  = $r['kq'] ?? [];
+
+    $topics = array_keys(array_filter($kqMap, fn($c) => $c === $criterion));
+
+    $sentences = [];
+    foreach ($topics as $topic) {
+        if (!isset($kqBank[$topic])) continue;
+
+        $label     = $kqBank[$topic]['label'];
+        $questions = $kqBank[$topic]['questions'];
+
+        $correct  = [];
+        $partial  = [];
+        $couldNot = [];
+
+        foreach ($questions as $i => $q) {
+            $val = $kqData["kq_{$topic}_{$i}"] ?? null;
+            if ($val === null) continue;
+            if ($val === 'correct') $correct[]  = $q['q'];
+            if ($val === 'partial') $partial[]  = $q['q'];
+            if ($val === 'no')      $couldNot[] = $q['q'];
+        }
+
+        foreach ($kqData as $key => $val) {
+            if (!preg_match("/^kq_{$topic}_cust_\\d+$/", $key)) continue;
+            $qText = trim($kqData[$key . '_text'] ?? '') ?: 'a custom question';
+            if ($val === 'correct') $correct[]  = $qText;
+            if ($val === 'partial') $partial[]  = $qText;
+            if ($val === 'no')      $couldNot[] = $qText;
+        }
+
+        if (empty($correct) && empty($partial) && empty($couldNot)) continue;
+
+        if (empty($partial) && empty($couldNot)) {
+            $sentences[] = "Demonstrated clear knowledge of {$label}.";
+            continue;
+        }
+
+        if ($partial) {
+            $qs = implode(' ', array_map(fn($q) => "\"{$q}\"", $partial));
+            $sentences[] = "Showed partial understanding of {$label}: could not fully answer: {$qs}.";
+        }
+        if ($couldNot) {
+            $qs = implode(' ', array_map(fn($q) => "\"{$q}\"", $couldNot));
+            $sentences[] = "Could not answer questions on {$label}: {$qs}.";
+        }
+    }
+
+    return implode(' ', $sentences);
+}
+
 function getCriterionFeedback(array $r, string $key): string {
     return match($key) {
-        'tech'                        => techFeedback($r),
-        'design'                      => designFeedback($r),
-        'demo', 'communication'       => demoFeedback($r),
-        default                       => '',
+        'tech'                              => techFeedback($r),
+        'design'                            => designFeedback($r),
+        'demo', 'communication'             => demoFeedback($r),
+        'testing', 'process', 'ai_usage'    => kqCriterionFeedback($r, $key),
+        default                             => '',
     };
 }
 
@@ -178,7 +233,7 @@ function buildFeedbackComment(array $r): string {
             "Critical Report ({$reportMax}%): {$reportM}/{$reportMax}",
             trim($r['report_comment'] ?? '') ?: 'Report not yet marked.',
             '',
-            "Overall: {$total}/100 — {$passStatus} (pass mark: {$passMark}%)",
+            "Overall: {$total}/100 - {$passStatus} (pass mark: {$passMark}%)",
         ]
     );
 
