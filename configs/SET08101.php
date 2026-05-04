@@ -435,3 +435,10 @@ define('DESIGN_CRITERIA', [
     ],
 ]);
 
+// ── Demo criteria labels — drives report.php and demo.php summary ─────────────
+define('DEMO_CRITERIA_LABELS', [
+    'tech'   => 'Technical Implementation',
+    'design' => 'Design & Usability',
+    'demo'   => 'Demonstration Quality',
+]);
+

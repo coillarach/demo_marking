@@ -264,24 +264,23 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
 <?php endif; ?>
 
 <!-- ── Mark summary ───────────────────────────────────────────────── -->
-<?php if ($seMode): ?>
 <div class="mark-summary" id="mark-summary">
-  <div class="ms-item"><div class="ms-label">Understanding (<?= $techMax ?>)</div><div class="ms-val" id="sum-tech">0</div></div>
-  <div class="ms-item"><div class="ms-label">Testing (<?= round(MARK_WEIGHTS['testing'] * 100) ?>)</div><div class="ms-val" id="sum-testing">0</div></div>
-  <div class="ms-item"><div class="ms-label">Process (<?= round(MARK_WEIGHTS['process'] * 100) ?>)</div><div class="ms-val" id="sum-process">0</div></div>
-  <div class="ms-item"><div class="ms-label">AI Usage (<?= round(MARK_WEIGHTS['ai_usage'] * 100) ?>)</div><div class="ms-val" id="sum-ai">0</div></div>
-  <div class="ms-item"><div class="ms-label">Comm. (<?= $demoMax ?>)</div><div class="ms-val" id="sum-demo">0</div></div>
-  <div class="ms-item ms-total"><div class="ms-label">Presentation mark</div><div class="ms-val" id="sum-total">0 / 100</div></div>
-</div>
-<?php else: ?>
-<div class="mark-summary" id="mark-summary">
-  <div class="ms-item"><div class="ms-label">Technical (<?= $techMax ?>)</div><div class="ms-val" id="sum-tech">0</div></div>
-  <div class="ms-item"><div class="ms-label">Design (<?= $designMax ?>)</div><div class="ms-val" id="sum-design">0</div></div>
-  <div class="ms-item"><div class="ms-label">Demo (<?= $demoMax ?>)</div><div class="ms-val" id="sum-demo">0</div></div>
+<?php
+$sumIdMap = ['tech' => 'sum-tech', 'design' => 'sum-design', 'demo' => 'sum-demo',
+             'communication' => 'sum-demo', 'testing' => 'sum-testing',
+             'process' => 'sum-process', 'ai_usage' => 'sum-ai'];
+foreach (DEMO_CRITERIA_LABELS as $key => $label) {
+    if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
+    $max   = round((MARK_WEIGHTS[$key] ?? 0) * 100);
+    $sumId = $sumIdMap[$key] ?? 'sum-' . $key;
+    $short = htmlspecialchars(explode(' ', $label)[0]); // first word as short label
+    echo "  <div class=\"ms-item\"><div class=\"ms-label\">{$short} ({$max})</div><div class=\"ms-val\" id=\"{$sumId}\">0</div></div>\n";
+}
+if (!$seMode): ?>
   <div class="ms-item"><div class="ms-label">Report (<?= $reportMax ?>)</div><div class="ms-val">—</div></div>
-  <div class="ms-item ms-total"><div class="ms-label">Session subtotal</div><div class="ms-val" id="sum-total">0 / <?= $sessionMax ?></div></div>
-</div>
 <?php endif; ?>
+  <div class="ms-item ms-total"><div class="ms-label"><?= $seMode ? 'Presentation mark' : 'Session subtotal' ?></div><div class="ms-val" id="sum-total">0 / <?= $seMode ? 100 : $sessionMax ?></div></div>
+</div>
 
 </div><!-- end #main-sections -->
 
@@ -328,12 +327,13 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
 <script>
 // ─── Config from PHP ──────────────────────────────────────────────
 const CONFIG = <?= json_encode([
-    'features'   => QUESTIONS,
-    'tierRanges' => TIER_RANGES,
-    'tierRules'  => TIER_RULES,
-    'weights'    => MARK_WEIGHTS,
-    'timerTotal' => TIMER_TOTAL,
-    'timerBreak' => TIMER_BREAK,
+    'features'       => QUESTIONS,
+    'tierRanges'     => TIER_RANGES,
+    'tierRules'      => TIER_RULES,
+    'weights'        => MARK_WEIGHTS,
+    'criteriaLabels' => DEMO_CRITERIA_LABELS,
+    'timerTotal'     => TIMER_TOTAL,
+    'timerBreak'     => TIMER_BREAK,
 ]) ?>;
 const DESIGN_KEYS  = <?= json_encode(array_keys(DESIGN_CRITERIA)) ?>;
 const MARKER_NAME  = <?= json_encode($currentMarkerName) ?>;
@@ -891,13 +891,27 @@ function updateSummaryTable() {
   setText('sum-process', (processMark * CRIT_WEIGHTS.process).toFixed(1));
   setText('sum-ai',      (aiMark      * CRIT_WEIGHTS.ai_usage).toFixed(1));
 
-  const rows = [
-    { label: 'Understanding of Code', raw: techRaw + '%',  factor: factors['tech'],     adjusted: techFinal + '%',          weight: CRIT_WEIGHTS.tech,          contrib: parseFloat((techFinal   * CRIT_WEIGHTS.tech).toFixed(1)) },
-    { label: 'Testing & Quality',     raw: '100%',          factor: factors['testing'],  adjusted: testingMark + '%',        weight: CRIT_WEIGHTS.testing,       contrib: parseFloat((testingMark * CRIT_WEIGHTS.testing).toFixed(1)) },
-    { label: 'Development Process',   raw: '100%',          factor: factors['process'],  adjusted: processMark + '%',        weight: CRIT_WEIGHTS.process,       contrib: parseFloat((processMark * CRIT_WEIGHTS.process).toFixed(1)) },
-    { label: 'AI Tool Usage',         raw: '100%',          factor: factors['ai_usage'], adjusted: aiMark + '%',             weight: CRIT_WEIGHTS.ai_usage,      contrib: parseFloat((aiMark      * CRIT_WEIGHTS.ai_usage).toFixed(1)) },
-    { label: 'Communication',         raw: demoMark,        factor: null,                adjusted: `${demoMark} / ${DEMO_MAX}`, weight: CRIT_WEIGHTS.communication, contrib: demoMark },
-  ];
+  const markForKey = {
+    tech: techFinal, testing: testingMark, process: processMark, ai_usage: aiMark, communication: demoMark,
+  };
+  const rawForKey = {
+    tech: techRaw + '%', testing: '100%', process: '100%', ai_usage: '100%', communication: demoMark,
+  };
+  const adjForKey = {
+    tech: techFinal + '%', testing: testingMark + '%', process: processMark + '%',
+    ai_usage: aiMark + '%', communication: `${demoMark} / ${DEMO_MAX}`,
+  };
+  const rows = Object.entries(CONFIG.criteriaLabels).map(([key, label]) => ({
+    label,
+    raw:      rawForKey[key]  ?? '—',
+    factor:   key !== 'communication' ? (factors[key] ?? null) : null,
+    adjusted: adjForKey[key] ?? '—',
+    weight:   CRIT_WEIGHTS[key] ?? 0,
+    // communication mark is already in weighted form (0–DEMO_MAX); others are 0–100 × weight
+    contrib:  key === 'communication'
+      ? (markForKey[key] ?? 0)
+      : parseFloat(((markForKey[key] ?? 0) * (CRIT_WEIGHTS[key] ?? 0)).toFixed(1)),
+  }));
 
   const tbody = document.getElementById('summary-rows');
   if (!tbody) return;

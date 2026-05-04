@@ -72,7 +72,7 @@ function demoFeedback(array $r): string {
         'poor'      => 'The student was unable to adequately explain significant portions of the submitted code during the demonstration.',
     ];
 
-    $demoMax = round(MARK_WEIGHTS['demo'] * 100);
+    $demoMax = round((MARK_WEIGHTS['demo'] ?? MARK_WEIGHTS['communication'] ?? 0) * 100);
     $out = $descs[$band] ?? "Demonstration quality mark: $mark/$demoMax.";
     if ($setup     === 'no') $out .= ' Note: time was lost at the start of the demonstration waiting for the environment to be set up.';
     if ($presented === 'no') $out .= ' The student was largely unable to present their features independently.';
@@ -83,18 +83,38 @@ function demoFeedback(array $r): string {
     return $out;
 }
 
+function getCriterionMark(array $r, string $key): float {
+    return match($key) {
+        'tech'                   => floatval($r['tech_weighted'] ?? 0),
+        'design'                 => floatval($r['design']['total'] ?? 0),
+        'demo', 'communication'  => floatval($r['demo_mark'] ?? 0),
+        'testing'                => round(floatval($r['testing_mark'] ?? 0) * (MARK_WEIGHTS['testing'] ?? 0), 2),
+        'process'                => round(floatval($r['process_mark'] ?? 0) * (MARK_WEIGHTS['process'] ?? 0), 2),
+        'ai_usage'               => round(floatval($r['ai_usage_mark'] ?? 0) * (MARK_WEIGHTS['ai_usage'] ?? 0), 2),
+        default                  => 0.0,
+    };
+}
+
+function getCriterionFeedback(array $r, string $key): string {
+    return match($key) {
+        'tech'                        => techFeedback($r),
+        'design'                      => designFeedback($r),
+        'demo', 'communication'       => demoFeedback($r),
+        default                       => '',
+    };
+}
+
 function buildFeedbackComment(array $r): string {
     $weights   = MARK_WEIGHTS;
-    $techMax   = round($weights['tech']   * 100);
-    $designMax = round($weights['design'] * 100);
-    $demoMax   = round($weights['demo']   * 100);
-    $reportMax = round($weights['report'] * 100);
+    $reportMax = round(($weights['report'] ?? (defined('REPORT_WEIGHT') ? REPORT_WEIGHT : 0)) * 100);
+    $reportM   = floatval($r['report_mark'] ?? 0);
 
-    $techW   = floatval($r['tech_weighted']    ?? 0);
-    $designT = intval($r['design']['total']    ?? 0);
-    $demoM   = intval($r['demo_mark']          ?? 0);
-    $reportM = floatval($r['report_mark']      ?? 0);
-    $total   = round($techW + $designT + $demoM + $reportM, 1);
+    $sessionTotal = 0.0;
+    foreach (DEMO_CRITERIA_LABELS as $key => $_) {
+        if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
+        $sessionTotal += getCriterionMark($r, $key);
+    }
+    $total = round($sessionTotal + $reportM, 1);
 
     $authorship = $r['authorship'] ?? 'pass';
     $comment    = trim($r['misconduct_comment'] ?? '');
@@ -139,24 +159,28 @@ function buildFeedbackComment(array $r): string {
     $passMark   = PASS_MARK;
     $passStatus = ($total >= $passMark) ? 'PASS' : 'FAIL';
 
-    $lines = [
-        $auth_line,
-        $kq_section,
-        '',
-        "Technical Implementation ({$techMax}%): {$techW}/{$techMax}",
-        techFeedback($r),
-        '',
-        "Design & Usability ({$designMax}%): {$designT}/{$designMax}",
-        designFeedback($r),
-        '',
-        "Demonstration Quality ({$demoMax}%): {$demoM}/{$demoMax}",
-        demoFeedback($r),
-        '',
-        "Critical Report ({$reportMax}%): {$reportM}/{$reportMax}",
-        trim($r['report_comment'] ?? '') ?: 'Report not yet marked.',
-        '',
-        "Overall: {$total}/100 — {$passStatus} (pass mark: {$passMark}%)",
-    ];
+    $criteriaLines = [];
+    foreach (DEMO_CRITERIA_LABELS as $key => $label) {
+        if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
+        $max      = round(($weights[$key] ?? 0) * 100);
+        $mark     = getCriterionMark($r, $key);
+        $feedback = getCriterionFeedback($r, $key);
+        $criteriaLines[] = '';
+        $criteriaLines[] = "{$label} ({$max}%): {$mark}/{$max}";
+        if ($feedback !== '') $criteriaLines[] = $feedback;
+    }
+
+    $lines = array_merge(
+        [$auth_line, $kq_section],
+        $criteriaLines,
+        [
+            '',
+            "Critical Report ({$reportMax}%): {$reportM}/{$reportMax}",
+            trim($r['report_comment'] ?? '') ?: 'Report not yet marked.',
+            '',
+            "Overall: {$total}/100 — {$passStatus} (pass mark: {$passMark}%)",
+        ]
+    );
 
     return implode("\n", $lines);
 }

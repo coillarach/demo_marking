@@ -35,6 +35,15 @@ define('MARKERS', [
 // ── DESIGN_CRITERIA — empty; suppresses scored grid in §3 ─────────────────────
 define('DESIGN_CRITERIA', []);
 
+// ── Demo criteria labels — drives report.php and demo.php summary ─────────────
+define('DEMO_CRITERIA_LABELS', [
+    'tech'          => 'Understanding of Code',
+    'testing'       => 'Testing & Quality',
+    'process'       => 'Development Process',
+    'ai_usage'      => 'AI Tool Usage',
+    'communication' => 'Communication & Presentation',
+]);
+
 // ── Tier ranges — constrain §6 Understanding of Code mark ─────────────────────
 define('TIER_RANGES', [
     'advanced3'     => ['label' => 'Advanced (3+ features)',      'cls' => 'tier-advanced',     'min' => 80, 'max' => 100, 'mid' => 90],

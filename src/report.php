@@ -116,11 +116,21 @@ $navNext  = ($navIdx !== false && $navIdx < $navTotal - 1) ? $matricList[$navIdx
 
 <!-- Demo marks breakdown -->
 <?php
-$techW   = floatval($record['tech_weighted']    ?? 0);
-$designT = intval($record['design']['total']    ?? 0);
-$demoM   = intval($record['demo_mark']          ?? 0);
-$reportM = floatval($record['report_mark']      ?? 0);
+$reportM    = floatval($record['report_mark'] ?? 0);
 $authorship = $record['authorship'] ?? 'pass';
+
+$sessionSubtotal = 0.0;
+$sessionMax      = 0;
+$criteriaRows    = [];
+foreach (DEMO_CRITERIA_LABELS as $key => $label) {
+    if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
+    $max      = round((MARK_WEIGHTS[$key] ?? 0) * 100);
+    $mark     = getCriterionMark($record, $key);
+    $feedback = getCriterionFeedback($record, $key);
+    $sessionSubtotal += $mark;
+    $sessionMax      += $max;
+    $criteriaRows[]   = compact('label', 'mark', 'max', 'feedback');
+}
 ?>
 <div class="card">
   <h2>Demo Marks &amp; Feedback — <?= htmlspecialchars($record['matric']) ?></h2>
@@ -139,39 +149,21 @@ $authorship = $record['authorship'] ?? 'pass';
     <span class="fb-auth-pass">&#x2713; Authorship confirmed at demonstration</span>
   <?php endif; ?>
 
-<?php
-  $techMax    = round(MARK_WEIGHTS['tech']   * 100);
-  $designMax  = round(MARK_WEIGHTS['design'] * 100);
-  $demoMax    = round(MARK_WEIGHTS['demo']   * 100);
-  $sessionMax = $techMax + $designMax + $demoMax;
-?>
+  <?php foreach ($criteriaRows as $cr): ?>
   <div class="fb-section">
     <div class="fb-header">
-      <span class="fb-title">Technical Implementation</span>
-      <span class="fb-mark"><?= $techW ?> <span>/ <?= $techMax ?></span></span>
+      <span class="fb-title"><?= htmlspecialchars($cr['label']) ?></span>
+      <span class="fb-mark"><?= $cr['mark'] ?> <span>/ <?= $cr['max'] ?></span></span>
     </div>
-    <p class="fb-text"><?= htmlspecialchars(techFeedback($record)) ?></p>
+    <?php if ($cr['feedback'] !== ''): ?>
+    <p class="fb-text"><?= htmlspecialchars($cr['feedback']) ?></p>
+    <?php endif; ?>
   </div>
-
-  <div class="fb-section">
-    <div class="fb-header">
-      <span class="fb-title">Design &amp; Usability</span>
-      <span class="fb-mark"><?= $designT ?> <span>/ <?= $designMax ?></span></span>
-    </div>
-    <p class="fb-text"><?= htmlspecialchars(designFeedback($record)) ?></p>
-  </div>
-
-  <div class="fb-section">
-    <div class="fb-header">
-      <span class="fb-title">Demonstration Quality</span>
-      <span class="fb-mark"><?= $demoM ?> <span>/ <?= $demoMax ?></span></span>
-    </div>
-    <p class="fb-text"><?= htmlspecialchars(demoFeedback($record)) ?></p>
-  </div>
+  <?php endforeach; ?>
 
   <div class="fb-total">
     <span>Demo session subtotal</span>
-    <span class="ft-val"><?= $techW + $designT + $demoM ?> / <?= $sessionMax ?></span>
+    <span class="ft-val"><?= $sessionSubtotal ?> / <?= $sessionMax ?></span>
   </div>
 </div>
 
@@ -210,7 +202,7 @@ function showView(fmt) {
 }
 <?php endif; ?>
 
-const demoSubtotal = <?= json_encode($techW + $designT + $demoM) ?>;
+const demoSubtotal = <?= json_encode($sessionSubtotal) ?>;
 
 document.getElementById('report-mark').addEventListener('input', updateTotal);
 
