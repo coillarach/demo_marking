@@ -1,0 +1,29 @@
+/* ── Marks export page — page-specific styles ───────────────────── */
+
+main { max-width: 900px; }
+
+/* Stats overview */
+.stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.stat { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: .6rem 1rem; }
+.stat .s-label { font-size: .75rem; color: #64748b; }
+.stat .s-val   { font-size: 1.3rem; font-weight: 700; color: #1e3a5f; }
+.stat.warn   .s-val { color: #f59e0b; }
+.stat.danger .s-val { color: #ef4444; }
+
+/* Records table */
+table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+th, td { padding: .4rem .5rem; border-bottom: 1px solid #f1f5f9; text-align: left; }
+th { background: #f8fafc; color: #475569; font-weight: 600; }
+tr:hover td { background: #f8fafc; }
+
+/* Status badges */
+.badge          { font-size: .7rem; padding: .1rem .35rem; border-radius: 3px; color: #fff; font-weight: 600; }
+.badge-pass     { background: #10b981; }
+.badge-fail     { background: #ef4444; }
+.badge-complete { background: #2563eb; }
+.badge-pending  { background: #94a3b8; }
+
+/* Tier colours */
+.tier-adv { color: #065f46; font-weight: 600; }
+.tier-mid { color: #1e40af; font-weight: 600; }
+.tier-bas { color: #78350f; font-weight: 600; }

@@ -1,0 +1,123 @@
+/* ── Report marking page — page-specific styles ─────────────────── */
+
+/* Single-column fallback (no submission file found) */
+main:not(.report-split) { max-width: 700px; }
+.field textarea { min-height: 120px; }
+
+/* ── Split layout (submission file present) ──────────────────────── */
+/* page-header height is ~48px (sticky, defined in marking.css)       */
+main.report-split {
+  max-width: none;
+  display: grid;
+  grid-template-columns: 1fr 440px;
+  gap: 0;
+  align-items: start;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+}
+
+/* Viewer pane — left column */
+.viewer-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 2px solid #e2e8f0;
+  background: #f8fafc;
+}
+.viewer-pane--empty {
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: .9rem;
+  text-align: center;
+  padding: 2rem;
+}
+.viewer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .4rem .75rem;
+  background: #1e3a5f;
+  flex-shrink: 0;
+}
+.viewer-nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .8rem;
+  font-family: monospace;
+}
+.vnav-btn {
+  color: rgba(255,255,255,.75);
+  text-decoration: none;
+  padding: .15rem .4rem;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,.25);
+  transition: background .15s;
+}
+a.vnav-btn:hover { background: rgba(255,255,255,.15); color: #fff; border-color: rgba(255,255,255,.55); }
+.vnav-disabled   { color: rgba(255,255,255,.25); border-color: rgba(255,255,255,.1); cursor: default; }
+.vnav-pos        { color: rgba(255,255,255,.5); }
+.vnav-matric     { color: rgba(255,255,255,.75); letter-spacing: .03em; }
+
+.viewer-no-submission {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: .9rem;
+  font-style: italic;
+}
+.viewer-format-label {
+  font-size: .8rem;
+  color: rgba(255,255,255,.7);
+  padding: .2rem .5rem;
+}
+.btn-view {
+  padding: .2rem .65rem;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255,255,255,.65);
+  font-size: .8rem;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-view:hover  { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.55); }
+.btn-view.active { background: rgba(255,255,255,.18); color: #fff; border-color: rgba(255,255,255,.7); }
+#report-iframe   { flex: 1; width: 100%; border: none; }
+
+/* Form pane — right column, independently scrollable */
+.form-pane {
+  height: 100%;
+  overflow-y: auto;
+  padding: 1.25rem 1rem 4rem;
+}
+
+/* Mark summary grid */
+.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-bottom: 1rem; }
+.sg-item   { background: #f8fafc; border-radius: 5px; padding: .6rem .8rem; border: 1px solid #e2e8f0; }
+.sg-label  { font-size: .75rem; color: #64748b; }
+.sg-val    { font-size: 1.1rem; font-weight: 700; color: #1e3a5f; }
+
+/* Projected total row */
+.total-row          { background: #1e3a5f; color: #fff; border-radius: 6px; padding: .75rem 1rem; display: flex; justify-content: space-between; align-items: center; margin-top: .5rem; }
+.total-row .t-label { font-size: .875rem; opacity: .8; }
+.total-row .t-val   { font-size: 1.4rem; font-weight: 700; }
+
+/* Feedback preview */
+.fb-section        { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; }
+.fb-section:last-child { border-bottom: none; margin-bottom: 0; }
+.fb-header         { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: .35rem; }
+.fb-title          { font-size: .8rem; font-weight: 700; color: #1e3a5f; text-transform: uppercase; letter-spacing: .04em; }
+.fb-mark           { font-size: 1rem; font-weight: 700; color: #1e3a5f; }
+.fb-mark span      { font-size: .75rem; font-weight: 400; color: #64748b; }
+.fb-text           { font-size: .85rem; color: #334155; line-height: 1.5; }
+.fb-auth-pass      { font-size: .8rem; color: #065f46; background: #d1fae5; border-radius: 4px; padding: .25rem .6rem; display: inline-block; margin-bottom: .75rem; }
+.fb-auth-fail      { font-size: .8rem; color: #7f1d1d; background: #fee2e2; border-radius: 4px; padding: .25rem .6rem; display: inline-block; margin-bottom: .75rem; }
+.fb-total          { background: #1e3a5f; color: #fff; border-radius: 5px; padding: .5rem 1rem; display: flex; justify-content: space-between; align-items: center; margin-top: .75rem; font-size: .9rem; }
+.fb-total .ft-val  { font-size: 1.2rem; font-weight: 700; }

@@ -1,0 +1,58 @@
+/* ── SET08101 Marking Tool — shared styles ───────────────────────── */
+
+/* Base */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #f1f5f9; color: #1e293b; font-size: .9375rem; }
+a { color: #2563eb; }
+
+/* Page header */
+.page-header { background: #1e3a5f; color: #fff; padding: .75rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.page-header h1 { font-size: 1rem; font-weight: 600; }
+.page-header a { color: #93c5fd; font-size: .8rem; }
+
+/* Main content area — max-width set per page */
+main { margin: 1.5rem auto; padding: 0 1rem 4rem; }
+
+/* Cards */
+.card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.1); padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
+.card h2 { font-size: 1rem; color: #1e3a5f; margin-bottom: 1rem; padding-bottom: .4rem; border-bottom: 2px solid #e2e8f0; }
+
+/* Form elements */
+.field { margin-bottom: .9rem; }
+.field label { display: block; font-size: .8rem; font-weight: 600; color: #475569; margin-bottom: .25rem; }
+.field select, .field input[type=text], .field input[type=number], .field textarea {
+  width: 100%; padding: .45rem .65rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: .9rem; font-family: inherit;
+}
+.field textarea { resize: vertical; }
+.field-static { padding: .45rem .65rem; font-size: .9rem; color: #1e293b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; }
+select:focus, input:focus, textarea:focus { outline: 2px solid #2563eb; border-color: #2563eb; }
+.radio-group, .check-group { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .25rem; }
+.radio-group label, .check-group label { display: flex; align-items: center; gap: .35rem; font-size: .875rem; cursor: pointer; }
+.radio-group label input, .check-group label input { cursor: pointer; }
+
+/* Alerts */
+.alert { padding: .75rem 1rem; border-radius: 5px; font-size: .875rem; margin-bottom: 1rem; }
+.alert-danger  { background: #fee2e2; border-left: 4px solid #ef4444; color: #7f1d1d; }
+.alert-warning { background: #fef3c7; border-left: 4px solid #f59e0b; color: #78350f; }
+.alert-success { background: #d1fae5; border-left: 4px solid #10b981; color: #065f46; }
+
+/* Buttons */
+button.btn-primary, a.btn-primary { padding: .6rem 1.5rem; background: #2563eb; color: #fff; border: none; border-radius: 5px; font-size: .95rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+button.btn-primary:hover, a.btn-primary:hover { background: #1d4ed8; }
+button.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+
+/* Save status */
+#save-status { font-size: .875rem; }
+.saved      { color: #065f46; }
+.save-error { color: #dc2626; }
+
+/* ── Matric autocomplete ─────────────────────────────────────────── */
+.matric-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 200; background: #fff; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 0 5px 5px; box-shadow: 0 4px 12px rgba(0,0,0,.1); max-height: 220px; overflow-y: auto; list-style: none; margin: 0; padding: 0; }
+.matric-option { padding: .4rem .65rem; font-size: .875rem; cursor: pointer; font-family: monospace; }
+.matric-option:hover, .matric-option.active { background: #eff6ff; color: #1e40af; }
+.matric-option mark { background: none; font-weight: 700; color: #1e40af; }
+input.matric-unknown { border-color: #f59e0b !important; background: #fffbeb !important; }
+.matric-notice { font-size: .75rem; color: #92400e; margin: .2rem 0 0; }
+.matric-add-btn { margin-left: .4rem; padding: .1rem .5rem; font-size: .75rem; border: 1px solid #f59e0b; border-radius: 3px; background: #fff; color: #92400e; cursor: pointer; }
+.matric-add-btn:hover { background: #fef3c7; }
+.matric-add-btn:disabled { opacity: .6; cursor: default; }
