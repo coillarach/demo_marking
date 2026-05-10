@@ -17,6 +17,16 @@ function readStudentList(): array {
 }
 
 if (empty($_SESSION['marking_auth'])) {
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+                $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') ||
+               (!empty($_SERVER['CONTENT_TYPE']) &&
+                str_contains($_SERVER['CONTENT_TYPE'], 'application/json'));
+    if ($isAjax) {
+        http_response_code(401);
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => false, 'error' => 'Session expired']);
+        exit;
+    }
     header('Location: login.php');
     exit;
 }

@@ -43,14 +43,14 @@ $navNext  = ($navIdx !== false && $navIdx < $navTotal - 1) ? $matricList[$navIdx
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= MODULE_ID ?> — Report Marking</title>
+<title><?= MODULE_ID ?> - Report Marking</title>
 <link rel="stylesheet" href="static/marking.css">
 <link rel="stylesheet" href="static/report.css">
 <script src="static/matric-autocomplete.js"></script>
 </head>
 <body>
 <div class="page-header">
-  <h1><?= MODULE_ID ?> — Report Marking</h1>
+  <h1><?= MODULE_ID ?> - Report Marking</h1>
   <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <a href="demo.php">Demo form</a> &nbsp;|&nbsp; <a href="export.php">Export CSV</a> &nbsp;|&nbsp; <a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
 </div>
 <main class="report-split">
@@ -73,7 +73,7 @@ $navNext  = ($navIdx !== false && $navIdx < $navTotal - 1) ? $matricList[$navIdx
       <?php else: ?>
         <span class="vnav-btn vnav-disabled">&#8592; PREV</span>
       <?php endif; ?>
-      <span class="vnav-pos"><?= $navPos !== null ? $navPos . ' of ' . $navTotal : '— of ' . $navTotal ?></span>
+      <span class="vnav-pos"><?= $navPos !== null ? $navPos . ' of ' . $navTotal : '- of ' . $navTotal ?></span>
       <span class="vnav-matric"><?= htmlspecialchars($matric) ?></span>
       <?php if ($navNext): ?>
         <a href="report.php?matric=<?= urlencode($navNext) ?>" class="vnav-btn">NEXT &#8594;</a>
@@ -133,7 +133,7 @@ foreach (DEMO_CRITERIA_LABELS as $key => $label) {
 }
 ?>
 <div class="card">
-  <h2>Demo Marks &amp; Feedback — <?= htmlspecialchars($record['matric']) ?></h2>
+  <h2>Demo Marks &amp; Feedback - <?= htmlspecialchars($record['matric']) ?></h2>
   <p style="font-size:.75rem;color:#64748b;margin-bottom:1rem;">
     Tier: <strong><?= htmlspecialchars($record['tier'] ?? 'unknown') ?></strong> &nbsp;|&nbsp;
     Demo marker: <strong><?= htmlspecialchars($record['marker'] ?? '?') ?></strong>
@@ -144,7 +144,7 @@ foreach (DEMO_CRITERIA_LABELS as $key => $label) {
   </p>
 
   <?php if ($authorship === 'fail'): ?>
-    <span class="fb-auth-fail">&#x26A0; Authorship NOT confirmed — referred to academic misconduct procedure</span>
+    <span class="fb-auth-fail">&#x26A0; Authorship NOT confirmed - referred to academic misconduct procedure</span>
   <?php else: ?>
     <span class="fb-auth-pass">&#x2713; Authorship confirmed at demonstration</span>
   <?php endif; ?>
@@ -184,12 +184,26 @@ foreach (DEMO_CRITERIA_LABELS as $key => $label) {
 
   <div class="total-row" id="total-row">
     <span class="t-label">Projected overall mark</span>
-    <span class="t-val" id="projected-total">—</span>
+    <span class="t-val" id="projected-total">-</span>
   </div>
 
   <div style="display:flex;align-items:center;gap:1rem;margin-top:1rem;">
     <button class="btn-primary" id="btn-save">Save report mark</button>
     <span id="save-status"></span>
+  </div>
+</div>
+
+<div id="reauth-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:8px;padding:1.75rem;width:340px;max-width:92%;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+    <h2 style="margin:0 0 .4rem;font-size:1.1rem;">Session expired</h2>
+    <p style="font-size:.85rem;color:#475569;margin-bottom:1rem;">Please sign in again — your entered data has been preserved.</p>
+    <div id="reauth-error" style="display:none;color:#dc2626;margin-bottom:.75rem;font-size:.875rem;"></div>
+    <div class="field"><label for="reauth-id">Marker ID</label><input type="text" id="reauth-id" maxlength="8" inputmode="numeric"></div>
+    <div class="field"><label for="reauth-pw">Password</label><input type="password" id="reauth-pw"></div>
+    <div style="display:flex;gap:.5rem;margin-top:1rem;">
+      <button class="btn-primary" id="reauth-submit">Sign in</button>
+      <button class="btn-reset" type="button" id="reauth-cancel">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -203,13 +217,15 @@ function showView(fmt) {
 <?php endif; ?>
 
 const demoSubtotal = <?= json_encode($sessionSubtotal) ?>;
+const REPORT_MAX   = <?= $reportMax ?>;
+const MARKER_ID    = <?= json_encode($currentMarkerId) ?>;
 
 document.getElementById('report-mark').addEventListener('input', updateTotal);
 
 function updateTotal() {
   const rMark = parseFloat(document.getElementById('report-mark').value);
   if (isNaN(rMark)) {
-    document.getElementById('projected-total').textContent = '—';
+    document.getElementById('projected-total').textContent = '-';
     return;
   }
   const total = (demoSubtotal + rMark).toFixed(1);
@@ -218,22 +234,17 @@ function updateTotal() {
 
 updateTotal();
 
-document.getElementById('btn-save').addEventListener('click', async () => {
+async function doSave() {
   const btn    = document.getElementById('btn-save');
   const status = document.getElementById('save-status');
   const rMark  = parseFloat(document.getElementById('report-mark').value);
 
-  const reportMax = <?= $reportMax ?>;
-  if (isNaN(rMark) || rMark < 0 || rMark > reportMax) {
-    alert('Enter a report mark between 0 and ' + reportMax + '.');
-    return;
-  }
-
   btn.disabled = true;
   status.textContent = 'Saving…';
 
+  let res;
   try {
-    const res = await fetch('save.php', {
+    res = await fetch('save.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -243,6 +254,21 @@ document.getElementById('btn-save').addEventListener('click', async () => {
         report_comment: document.getElementById('report-comment').value.trim(),
       }),
     });
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+    status.className   = 'save-error';
+    btn.disabled = false;
+    return;
+  }
+
+  if (res.status === 401) {
+    btn.disabled = false;
+    status.textContent = '';
+    showReauthModal(doSave);
+    return;
+  }
+
+  try {
     const json = await res.json();
     if (json.ok) {
       status.textContent = '✓ Saved';
@@ -256,6 +282,62 @@ document.getElementById('btn-save').addEventListener('click', async () => {
     status.className   = 'save-error';
     btn.disabled = false;
   }
+}
+
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const rMark = parseFloat(document.getElementById('report-mark').value);
+  if (isNaN(rMark) || rMark < 0 || rMark > REPORT_MAX) {
+    alert('Enter a report mark between 0 and ' + REPORT_MAX + '.');
+    return;
+  }
+  await doSave();
+});
+
+// ─── Re-auth modal ────────────────────────────────────────────────
+let reauthCallback = null;
+
+function showReauthModal(callback) {
+  reauthCallback = callback;
+  document.getElementById('reauth-id').value = MARKER_ID;
+  document.getElementById('reauth-pw').value = '';
+  document.getElementById('reauth-error').style.display = 'none';
+  document.getElementById('reauth-modal').style.display = 'flex';
+  document.getElementById('reauth-pw').focus();
+}
+
+function closeReauthModal() {
+  document.getElementById('reauth-modal').style.display = 'none';
+  reauthCallback = null;
+}
+
+document.getElementById('reauth-cancel').addEventListener('click', () => {
+  closeReauthModal();
+  document.getElementById('btn-save').disabled = false;
+  document.getElementById('save-status').textContent = 'Save cancelled — session expired. Reload to start fresh.';
+  document.getElementById('save-status').className = 'save-error';
+});
+
+document.getElementById('reauth-submit').addEventListener('click', async () => {
+  const id  = document.getElementById('reauth-id').value.trim();
+  const pw  = document.getElementById('reauth-pw').value;
+  const err = document.getElementById('reauth-error');
+  const res = await fetch('reauth.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ marker_id: id, password: pw }),
+  });
+  const json = await res.json();
+  if (json.ok) {
+    closeReauthModal();
+    if (reauthCallback) reauthCallback();
+  } else {
+    err.textContent = json.error || 'Authentication failed';
+    err.style.display = '';
+  }
+});
+
+document.getElementById('reauth-pw').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('reauth-submit').click();
 });
 </script>
 

@@ -13,7 +13,7 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= MODULE_ID ?> — Demo Marking Sheet</title>
+<title><?= MODULE_ID ?> - Demo Marking Sheet</title>
 <link rel="stylesheet" href="static/marking.css?date=4May2026   ">
 <link rel="stylesheet" href="static/demo.css?date=4May2026">
 <script src="static/matric-autocomplete.js"></script>
@@ -21,7 +21,7 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
 <body>
 
 <div class="page-header">
-  <h1><?= MODULE_ID ?> — Demo Marking</h1>
+  <h1><?= MODULE_ID ?> - Demo Marking</h1>
   <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <a href="report.php">Report form</a> &nbsp;|&nbsp; <a href="export.php">Export CSV</a> &nbsp;|&nbsp; <a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
 </div>
 
@@ -48,20 +48,20 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
 <!-- ── Section 1: Presentation ────────────────────────────────────── -->
 <div class="card">
   <?php $presMins = round((TIMER_TOTAL - TIMER_BREAK) / 60); ?>
-  <h2><span class="step">1</span> Presentation (first <?= $presMins ?> minute<?= $presMins !== 1 ? 's' : '' ?> — observe)</h2>
+  <h2><span class="step">1</span> Presentation (first <?= $presMins ?> minute<?= $presMins !== 1 ? 's' : '' ?> - observe)</h2>
   <div class="field">
     <label>Software running and set up before demo started</label>
     <div class="radio-group">
       <label><input type="radio" name="setup_ready" value="yes"> Yes</label>
-      <label><input type="radio" name="setup_ready" value="no"> No — had to wait</label>
+      <label><input type="radio" name="setup_ready" value="no"> No - had to wait</label>
     </div>
   </div>
   <div class="field">
     <label>Student presented their features without excessive prompting</label>
     <div class="radio-group">
       <label><input type="radio" name="presented_clearly" value="yes"> Yes</label>
-      <label><input type="radio" name="presented_clearly" value="partial"> Partial — needed prompting</label>
-      <label><input type="radio" name="presented_clearly" value="no"> No — largely unable to present</label>
+      <label><input type="radio" name="presented_clearly" value="partial"> Partial - needed prompting</label>
+      <label><input type="radio" name="presented_clearly" value="no"> No - largely unable to present</label>
     </div>
   </div>
 </div>
@@ -80,13 +80,13 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
     <?php endforeach; ?>
   </div>
 
-  <div id="tier-indicator" style="margin-top:1rem;">No features ticked — select features above</div>
+  <div id="tier-indicator" style="margin-top:1rem;">No features ticked - select features above</div>
 </div>
 
 <?php if (!empty(DESIGN_CRITERIA)): ?>
 <!-- ── Section 3: Design & Usability ──────────────────────────────── -->
 <div class="card" id="section-design">
-  <h2><span class="step">3</span> Design &amp; Usability <small style="font-weight:400;font-size:.8rem;color:#64748b;">(<?= $designMax ?>% of total — observe during presentation)</small></h2>
+  <h2><span class="step">3</span> Design &amp; Usability <small style="font-weight:400;font-size:.8rem;color:#64748b;">(<?= $designMax ?>% of total - observe during presentation)</small></h2>
 
   <?php foreach (DESIGN_CRITERIA as $dKey => $dCrit): ?>
   <div class="design-row">
@@ -144,7 +144,7 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
 <div class="card">
   <h2><span class="step">5</span> Q&amp;A (last 3 minutes)</h2>
   <p style="font-size:.8rem;color:#64748b;margin-bottom:1rem;">
-    Questions are shown for ticked features. Higher-tier features are shown first. Lower-tier sections are marked <em>cursory</em> when a higher tier is present — a brief check is sufficient.
+    Questions are shown for ticked features. Higher-tier features are shown first. Lower-tier sections are marked <em>cursory</em> when a higher tier is present - a brief check is sufficient.
   </p>
   <div id="qa-container">
     <p style="color:#94a3b8;font-size:.875rem;">Tick features in Section 2 to load questions.</p>
@@ -188,7 +188,7 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
 
 <!-- ── Section 7: Demo Quality / Communication ────────────────────── -->
 <div class="card">
-  <h2><span class="step">7</span> <?php if ($seMode): ?>Communication &amp; Presentation<?php else: ?>Demonstration Quality<?php endif; ?> <small style="font-weight:400;font-size:.8rem;color:#64748b;">(<?= $demoMax ?>% of total<?php if (!$seMode): ?> — holistic<?php endif; ?>)</small></h2>
+  <h2><span class="step">7</span> <?php if ($seMode): ?>Communication &amp; Presentation<?php else: ?>Demonstration Quality<?php endif; ?> <small style="font-weight:400;font-size:.8rem;color:#64748b;">(<?= $demoMax ?>% of total<?php if (!$seMode): ?> - holistic<?php endif; ?>)</small></h2>
   <div id="presentation-reminder" class="presentation-reminder" style="display:none"></div>
   <?php if ($seMode): ?>
   <p style="font-size:.8rem;color:#475569;margin-bottom:.75rem;">Select a band to reflect the student's overall communication quality during the demo.</p>
@@ -200,7 +200,7 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
       <div class="field" style="margin-bottom:.25rem;">
         <label for="demo-band">Quality band</label>
         <select id="demo-band">
-          <option value="">— select —</option>
+          <option value="">- select -</option>
           <?php if ($seMode): ?>
           <option value="excellent" data-min="9"  data-max="10" data-mid="9">Excellent (9–10)</option>
           <option value="good"      data-min="7"  data-max="8"  data-mid="7">Good (7–8)</option>
@@ -252,7 +252,7 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
     <tfoot>
       <tr style="border-top:2px solid #e2e8f0;font-weight:600;">
         <td colspan="5" style="padding:.5rem .6rem;">Presentation mark (out of 100)</td>
-        <td id="summary-total" style="padding:.5rem .6rem;">—</td>
+        <td id="summary-total" style="padding:.5rem .6rem;">-</td>
       </tr>
     </tfoot>
   </table>
@@ -277,7 +277,7 @@ foreach (DEMO_CRITERIA_LABELS as $key => $label) {
     echo "  <div class=\"ms-item\"><div class=\"ms-label\">{$short} ({$max})</div><div class=\"ms-val\" id=\"{$sumId}\">0</div></div>\n";
 }
 if (!$seMode): ?>
-  <div class="ms-item"><div class="ms-label">Report (<?= $reportMax ?>)</div><div class="ms-val">—</div></div>
+  <div class="ms-item"><div class="ms-label">Report (<?= $reportMax ?>)</div><div class="ms-val">-</div></div>
 <?php endif; ?>
   <div class="ms-item ms-total"><div class="ms-label"><?= $seMode ? 'Presentation mark' : 'Session subtotal' ?></div><div class="ms-val" id="sum-total">0 / <?= $seMode ? 100 : $sessionMax ?></div></div>
 </div>
@@ -292,10 +292,10 @@ if (!$seMode): ?>
   </p>
   <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;">
     <input type="checkbox" id="authorship-fail" style="margin-top:.2rem;width:1.1rem;height:1.1rem;flex-shrink:0;cursor:pointer;">
-    <span><strong>Refer for academic misconduct</strong> — authorship of the submitted code could not be confirmed</span>
+    <span><strong>Refer for academic misconduct</strong> - authorship of the submitted code could not be confirmed</span>
   </label>
   <div id="authorship-warning" class="alert alert-danger" style="display:none;margin-top:.75rem;">
-    <strong>Academic Misconduct:</strong> Do not award a mark. Complete the form and submit — a flag will be recorded. Follow the standard referral procedure after the session.
+    <strong>Academic Misconduct:</strong> Do not award a mark. Complete the form and submit - a flag will be recorded. Follow the standard referral procedure after the session.
     <div style="margin-top:.75rem;">
       <label for="misconduct-comment" style="font-weight:600;font-size:.875rem;">Rationale / observations <span style="font-weight:400;">(required for referral)</span></label>
       <textarea id="misconduct-comment" rows="3"
@@ -315,6 +315,20 @@ if (!$seMode): ?>
 </div>
 
 </main>
+
+<div id="reauth-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:8px;padding:1.75rem;width:340px;max-width:92%;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+    <h2 style="margin:0 0 .4rem;font-size:1.1rem;">Session expired</h2>
+    <p style="font-size:.85rem;color:#475569;margin-bottom:1rem;">Please sign in again — your entered data has been preserved.</p>
+    <div id="reauth-error" style="display:none;color:#dc2626;margin-bottom:.75rem;font-size:.875rem;"></div>
+    <div class="field"><label for="reauth-id">Marker ID</label><input type="text" id="reauth-id" maxlength="8" inputmode="numeric"></div>
+    <div class="field"><label for="reauth-pw">Password</label><input type="password" id="reauth-pw"></div>
+    <div style="display:flex;gap:.5rem;margin-top:1rem;">
+      <button class="btn-primary" id="reauth-submit">Sign in</button>
+      <button class="btn-reset" type="button" id="reauth-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Demo timer (fixed left margin) ────────────────────────────── -->
 <div id="demo-timer">
@@ -337,6 +351,7 @@ const CONFIG = <?= json_encode([
 ]) ?>;
 const DESIGN_KEYS  = <?= json_encode(array_keys(DESIGN_CRITERIA)) ?>;
 const MARKER_NAME  = <?= json_encode($currentMarkerName) ?>;
+const MARKER_ID    = <?= json_encode($currentMarkerId) ?>;
 <?php
 $kqRequiredGroups = [];
 foreach (KNOWLEDGE_QUESTIONS as $key => $group) {
@@ -400,12 +415,12 @@ function setLoadStatus(state, matric) {
       el.style.display = 'block';
       break;
     case 'loaded':
-      el.textContent = '✓ Existing record loaded — editing ' + (matric || '');
+      el.textContent = '✓ Existing record loaded - editing ' + (matric || '');
       el.style.color = '#065f46';
       el.style.display = 'block';
       break;
     case 'new':
-      el.textContent = 'New student — no existing record';
+      el.textContent = 'New student - no existing record';
       el.style.color = '#64748b';
       el.style.display = 'block';
       break;
@@ -634,8 +649,15 @@ function loadRecord(r) {
 // ─── Fetch and load record ────────────────────────────────────────
 async function fetchAndLoad(matric) {
   setLoadStatus('loading');
+  const res = await fetch(`load_record.php?matric=${encodeURIComponent(matric)}`, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+  });
+  if (res.status === 401) {
+    setLoadStatus('hidden');
+    showReauthModal(() => fetchAndLoad(matric));
+    return;
+  }
   try {
-    const res  = await fetch(`load_record.php?matric=${encodeURIComponent(matric)}`);
     const json = await res.json();
     if (!json.found) {
       resetForm();
@@ -663,7 +685,7 @@ function handleMatricChange() {
       document.getElementById('matric').value = loadedMatric || '';
       return;
     }
-    // User confirmed discard — clear snapshot so beforeunload doesn't fire a second prompt
+    // User confirmed discard - clear snapshot so beforeunload doesn't fire a second prompt
     formSnapshot = null;
   }
 
@@ -726,7 +748,7 @@ function updateTier() {
   const ind = document.getElementById('tier-indicator');
   ind.className = '';
   if (!key) {
-    ind.textContent = 'No features ticked — select features above';
+    ind.textContent = 'No features ticked - select features above';
     document.getElementById('tech-range-hint').textContent = 'Tick features above to see the suggested range.';
     return;
   }
@@ -761,7 +783,7 @@ function updatePresentationReminder() {
 
   const setupLabels = {
     yes: 'Site was set up and ready before the demo started.',
-    no:  'Setup was not complete at the start — time was lost waiting for the environment.',
+    no:  'Setup was not complete at the start - time was lost waiting for the environment.',
   };
   const presentedLabels = {
     yes:     'Student presented their features independently without prompting.',
@@ -809,7 +831,7 @@ function computeKnowledgeFactor() {
     if (r.value === 'prompt') nPrompt++;
     if (r.value === 'no')     nNo++;
   });
-  // Knowledge check responses — SE mode only counts tech-mapped topics for §6 factor
+  // Knowledge check responses - SE mode only counts tech-mapped topics for §6 factor
   document.querySelectorAll('input[type=radio][name^=kq_]:checked').forEach(r => {
     if (SE_MODE) {
       const topicKey = getTopicKey(r.name);
@@ -903,9 +925,9 @@ function updateSummaryTable() {
   };
   const rows = Object.entries(CONFIG.criteriaLabels).map(([key, label]) => ({
     label,
-    raw:      rawForKey[key]  ?? '—',
+    raw:      rawForKey[key]  ?? '-',
     factor:   key !== 'communication' ? (factors[key] ?? null) : null,
-    adjusted: adjForKey[key] ?? '—',
+    adjusted: adjForKey[key] ?? '-',
     weight:   CRIT_WEIGHTS[key] ?? 0,
     // communication mark is already in weighted form (0–DEMO_MAX); others are 0–100 × weight
     contrib:  key === 'communication'
@@ -919,7 +941,7 @@ function updateSummaryTable() {
   let total = 0;
   for (const r of rows) {
     total += r.contrib;
-    const fCell = r.factor !== null ? r.factor.toFixed(2) : '—';
+    const fCell = r.factor !== null ? r.factor.toFixed(2) : '-';
     tbody.innerHTML += `<tr style="border-bottom:1px solid #f1f5f9;">
       <td style="padding:.35rem .6rem;">${r.label}</td>
       <td style="padding:.35rem .6rem;">${r.raw}</td>
@@ -938,7 +960,7 @@ function updateSummaryTable() {
 
 function setCommentRequired(fieldId, hintId, required) {
   const hint = document.getElementById(hintId);
-  hint.textContent = required ? '(required — mark adjusted from midpoint)' : '(optional)';
+  hint.textContent = required ? '(required - mark adjusted from midpoint)' : '(optional)';
   hint.style.color  = required ? '#dc2626' : '#64748b';
   document.getElementById(fieldId).classList.toggle('comment-required', required);
 }
@@ -1342,31 +1364,41 @@ if (!/^\d{8}$/.test(data.matric)) errs.push('Enter a valid 8-digit matriculation
 }
 
 // ─── Submit ───────────────────────────────────────────────────────
-document.getElementById('btn-submit').addEventListener('click', async () => {
-  const data = collectData();
-  const errs = validate(data);
-  if (errs.length) {
-    alert('Please fix the following:\n\n' + errs.join('\n'));
-    return;
-  }
-
+async function doSave() {
+  const data   = collectData();
   const btn    = document.getElementById('btn-submit');
   const status = document.getElementById('save-status');
   btn.disabled = true;
   status.textContent = 'Saving…';
   status.className   = '';
 
+  let res;
   try {
-    const res = await fetch('save.php', {
+    res = await fetch('save.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+  } catch(e) {
+    status.textContent = `Error: ${e.message}`;
+    status.className   = 'save-error';
+    btn.disabled = false;
+    return;
+  }
+
+  if (res.status === 401) {
+    btn.disabled = false;
+    status.textContent = '';
+    showReauthModal(doSave);
+    return;
+  }
+
+  try {
     const json = await res.json();
     if (json.ok) {
-      status.textContent = `✓ Saved — ${data.matric}`;
+      status.textContent = `✓ Saved - ${data.matric}`;
       status.className   = 'saved';
-      captureSnapshot();   // mark form as clean after save
+      captureSnapshot();
       btn.disabled = false;
     } else {
       throw new Error(json.error || 'Unknown error');
@@ -1376,6 +1408,16 @@ document.getElementById('btn-submit').addEventListener('click', async () => {
     status.className   = 'save-error';
     btn.disabled = false;
   }
+}
+
+document.getElementById('btn-submit').addEventListener('click', async () => {
+  const data = collectData();
+  const errs = validate(data);
+  if (errs.length) {
+    alert('Please fix the following:\n\n' + errs.join('\n'));
+    return;
+  }
+  await doSave();
 });
 
 // ─── Reset ────────────────────────────────────────────────────────
@@ -1440,9 +1482,10 @@ function resetForm() {
 const TIMER_TOTAL = CONFIG.timerTotal;
 const TIMER_BREAK = CONFIG.timerBreak;
 
-let timerInterval  = null;
-let timerRemaining = TIMER_TOTAL;
-let timerStartedAt = null;
+let timerInterval     = null;
+let keepaliveInterval = null;
+let timerRemaining    = TIMER_TOTAL;
+let timerStartedAt    = null;
 
 function timerBeep(freq, count) {
   try {
@@ -1492,17 +1535,23 @@ function timerStart() {
   document.getElementById('btn-timer-start').style.display = 'none';
   document.getElementById('btn-timer-reset').style.display = 'block';
 
+  keepaliveInterval = setInterval(() => {
+    fetch('keepalive.php').catch(() => {});
+  }, 5 * 60 * 1000);
+
   timerInterval = setInterval(() => {
     timerRemaining--;
     timerRender();
 
     if (timerRemaining === TIMER_BREAK) {
-      timerBeep(880, 2);  // two high beeps — presentation over
+      timerBeep(880, 2);  // two high beeps - presentation over
     }
     if (timerRemaining === 0) {
-      timerBeep(660, 3);  // three lower beeps — time up
+      timerBeep(660, 3);  // three lower beeps - time up
       clearInterval(timerInterval);
       timerInterval = null;
+      clearInterval(keepaliveInterval);
+      keepaliveInterval = null;
     }
   }, 1000);
 }
@@ -1510,6 +1559,8 @@ function timerStart() {
 function timerReset() {
   clearInterval(timerInterval);
   timerInterval = null;
+  clearInterval(keepaliveInterval);
+  keepaliveInterval = null;
   timerRemaining = TIMER_TOTAL;
   document.getElementById('demo-timer').className = '';
   document.getElementById('timer-phase').textContent = 'Ready';
@@ -1522,6 +1573,53 @@ function timerReset() {
 // ─── Init ─────────────────────────────────────────────────────────
 updateDesign();
 updateTotal();
+
+// ─── Re-auth modal ────────────────────────────────────────────────
+let reauthCallback = null;
+
+function showReauthModal(callback) {
+  reauthCallback = callback;
+  document.getElementById('reauth-id').value = MARKER_ID;
+  document.getElementById('reauth-pw').value = '';
+  document.getElementById('reauth-error').style.display = 'none';
+  document.getElementById('reauth-modal').style.display = 'flex';
+  document.getElementById('reauth-pw').focus();
+}
+
+function closeReauthModal() {
+  document.getElementById('reauth-modal').style.display = 'none';
+  reauthCallback = null;
+}
+
+document.getElementById('reauth-cancel').addEventListener('click', () => {
+  closeReauthModal();
+  document.getElementById('btn-submit').disabled = false;
+  document.getElementById('save-status').textContent = 'Save cancelled — session expired. Reload to start fresh.';
+  document.getElementById('save-status').className = 'save-error';
+});
+
+document.getElementById('reauth-submit').addEventListener('click', async () => {
+  const id  = document.getElementById('reauth-id').value.trim();
+  const pw  = document.getElementById('reauth-pw').value;
+  const err = document.getElementById('reauth-error');
+  const res = await fetch('reauth.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ marker_id: id, password: pw }),
+  });
+  const json = await res.json();
+  if (json.ok) {
+    closeReauthModal();
+    if (reauthCallback) reauthCallback();
+  } else {
+    err.textContent = json.error || 'Authentication failed';
+    err.style.display = '';
+  }
+});
+
+document.getElementById('reauth-pw').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('reauth-submit').click();
+});
 </script>
 <script>initMatricAutocomplete('matric', <?= json_encode($matricList) ?>);</script>
 </body>
