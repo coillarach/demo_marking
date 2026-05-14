@@ -41,6 +41,7 @@ if ($mode === 'report' && file_exists($file)) {
         'report_saved'     => date('c'),
     ]);
 } else {
+    $existing = file_exists($file) ? json_decode(file_get_contents($file), true) ?? [] : [];
     $demoSaved = date('c');
     $duration  = null;
     if (!empty($data['timer_start'])) {
@@ -54,7 +55,8 @@ if ($mode === 'report' && file_exists($file)) {
     $data['marker_id']      = $_SESSION['marker_id']   ?? '';
     $data['demo_saved']     = $demoSaved;
     $data['demo_duration']  = $duration;
-    $data['complete']       = false;
+    $data['complete']       = $existing['complete'] ?? false;
+    $data = array_merge($existing, $data);
 }
 
 if (file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT)) === false) {
