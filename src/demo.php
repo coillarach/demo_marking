@@ -633,8 +633,8 @@ function loadRecord(r) {
   // Authorship
   const authFail = r.authorship === 'fail';
   document.getElementById('authorship-fail').checked = authFail;
-  document.getElementById('authorship-warning').style.display = authFail ? 'block' : 'none';
   document.getElementById('misconduct-comment').value = r.misconduct_comment ?? '';
+  updateAuthorshipWarning();
 
   // SE mode: restore overall_comment; summary table updates via updateTotal() already called above
   if (SE_MODE) {
@@ -702,9 +702,12 @@ function handleMatricChange() {
 }
 
 // ─── Authorship gate ──────────────────────────────────────────────
-document.getElementById('authorship-fail').addEventListener('change', function() {
-  document.getElementById('authorship-warning').style.display = this.checked ? 'block' : 'none';
-});
+function updateAuthorshipWarning() {
+  const checked = document.getElementById('authorship-fail').checked;
+  const hasComment = document.getElementById('misconduct-comment').value.trim() !== '';
+  document.getElementById('authorship-warning').style.display = (checked || hasComment) ? 'block' : 'none';
+}
+document.getElementById('authorship-fail').addEventListener('change', updateAuthorshipWarning);
 
 // ─── Matric auto-load ─────────────────────────────────────────────
 document.getElementById('matric').addEventListener('change', handleMatricChange);
