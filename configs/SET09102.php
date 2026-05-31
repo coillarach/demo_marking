@@ -19,13 +19,11 @@ define('MARK_WEIGHTS', [
     'ai_usage'      => 0.20,  // AI Tool Usage — KQ-driven
 ]);
 
-define('REPORT_WEIGHT', 0.20); // Report weight kept separate — not part of presentation mark
-
 define('TIMER_TOTAL', 1080); // 18 minutes
 define('TIMER_BREAK',  480); // alert at 8 minutes remaining
 
 define('MARKERS', [
-    '40000001' => ['name' => 'Brian Davison', 'password' => password_hash('changeme1', PASSWORD_DEFAULT)],
+    '40000001' => ['name' => 'Marker 1',      'password' => password_hash('changeme', PASSWORD_DEFAULT)],
     '40000002' => ['name' => 'Marker 2',      'password' => password_hash('changeme2', PASSWORD_DEFAULT)],
     '40000003' => ['name' => 'Marker 3',      'password' => password_hash('changeme3', PASSWORD_DEFAULT)],
     '40000004' => ['name' => 'Marker 4',      'password' => password_hash('changeme4', PASSWORD_DEFAULT)],

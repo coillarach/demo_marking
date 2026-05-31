@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Could not copy module config to target directory.';
         } else {
             $moduleUrl = '/' . basename($targetDir);
-            $adminUrl  = defined('ADMIN_URL') ? ADMIN_URL : '/admin';
+            $adminUrl  = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/admin/deploy.php'), '/\\') ?: '/admin';
             file_put_contents(
                 $targetDir . '/config.php',
                 "\ndefine('ADMIN_URL',  " . var_export($adminUrl,   true) . ");\n" .

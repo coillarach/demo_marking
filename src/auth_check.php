@@ -8,11 +8,11 @@ function readStudentList(): array {
     $file = DATA_DIR . 'students.csv';
     if (!file_exists($file)) return [];
     $handle = fopen($file, 'r');
-    $header = fgetcsv($handle);
+    $header = fgetcsv($handle, escape: '\\');
     $usernameIdx = $header ? array_search('Username', $header) : false;
     if ($usernameIdx === false) { fclose($handle); return []; }
     $matrics = [];
-    while (($row = fgetcsv($handle)) !== false) {
+    while (($row = fgetcsv($handle, escape: '\\')) !== false) {
         $m = trim($row[$usernameIdx] ?? '');
         if ($m !== '') $matrics[] = $m;
     }
@@ -31,13 +31,13 @@ function readMarksheetData(): array {
     $file = DATA_DIR . 'students.csv';
     if (!file_exists($file)) return ['header' => null, 'rows' => [], 'col' => []];
     $handle = fopen($file, 'r');
-    $header = fgetcsv($handle);
+    $header = fgetcsv($handle, escape: '\\');
     if (!$header) { fclose($handle); return ['header' => null, 'rows' => [], 'col' => []]; }
     $header[0] = ltrim($header[0], "\xEF\xBB\xBF");  // strip UTF-8 BOM if present
     $usernameIdx = array_search('Username', $header);
     if ($usernameIdx === false) { fclose($handle); return ['header' => $header, 'rows' => [], 'col' => []]; }
     $rows = [];
-    while (($row = fgetcsv($handle)) !== false) {
+    while (($row = fgetcsv($handle, escape: '\\')) !== false) {
         $matric = trim($row[$usernameIdx] ?? '');
         if ($matric !== '') $rows[$matric] = $row;
     }
@@ -54,11 +54,11 @@ function buildParticipantMap(): array {
     $file = DATA_DIR . 'students.csv';
     if (!file_exists($file)) return [];
     $handle = fopen($file, 'r');
-    $header = fgetcsv($handle);
+    $header = fgetcsv($handle, escape: '\\');
     $usernameIdx = $header ? array_search('Username', $header) : false;
     if ($usernameIdx === false) { fclose($handle); return []; }
     $map = [];
-    while (($row = fgetcsv($handle)) !== false) {
+    while (($row = fgetcsv($handle, escape: '\\')) !== false) {
         $matric = trim($row[$usernameIdx] ?? '');
         $ident  = trim($row[0] ?? '');
         if ($matric !== '' && $ident !== '') $map[$matric] = $ident;
@@ -84,3 +84,7 @@ if (empty($_SESSION['marking_auth'])) {
 
 $currentMarkerId   = $_SESSION['marker_id']   ?? '';
 $currentMarkerName = $_SESSION['marker_name'] ?? '';
+
+function hasReport(): bool {
+    return defined('REPORT_WEIGHT') || (MARK_WEIGHTS['report'] ?? 0) > 0;
+}

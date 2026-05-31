@@ -58,14 +58,14 @@ if (isset($_GET['download'])) {
             while (count($row) < count($msHeader)) $row[] = '';
 
             if ($r !== null) {
-                $reportM = defined('REPORT_WEIGHT') ? floatval($r['report_mark'] ?? 0) : 0.0;
+                $reportM = hasReport() ? floatval($r['report_mark'] ?? 0) : 0.0;
                 $sessionTotal = 0.0;
                 foreach (DEMO_CRITERIA_LABELS as $key => $_) {
                     if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
                     $sessionTotal += getCriterionMark($r, $key);
                 }
                 $total    = round($sessionTotal + $reportM, 1);
-                $complete = !empty($r['complete']);
+                $complete = !empty($r['complete']) && (!hasReport() || array_key_exists('report_mark', $r));
                 $state    = $complete ? 'Marking completed' : 'In marking';
                 $grade    = ($r['authorship'] ?? 'pass') === 'fail' ? '' : $total;
 
@@ -89,14 +89,14 @@ if (isset($_GET['download'])) {
         $matric = $r['matric'] ?? '';
         if (in_array($matric, $written, true)) continue;
 
-        $reportM = defined('REPORT_WEIGHT') ? floatval($r['report_mark'] ?? 0) : 0.0;
+        $reportM = hasReport() ? floatval($r['report_mark'] ?? 0) : 0.0;
         $sessionTotal = 0.0;
         foreach (DEMO_CRITERIA_LABELS as $key => $_) {
             if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
             $sessionTotal += getCriterionMark($r, $key);
         }
         $total    = round($sessionTotal + $reportM, 1);
-        $complete = !empty($r['complete']);
+        $complete = !empty($r['complete']) && (!hasReport() || array_key_exists('report_mark', $r));
         $state    = $complete ? 'Marking completed' : 'In marking';
         $grade    = ($r['authorship'] ?? 'pass') === 'fail' ? '' : $total;
 
@@ -116,14 +116,28 @@ if (isset($_GET['download'])) {
 }
 
 // ─── Dashboard view ───────────────────────────────────────────────
-$completeCount   = count(array_filter($records, fn($r) => !empty($r['complete'])));
-$authFailCount   = count(array_filter($records, fn($r) => ($r['authorship'] ?? '') === 'fail'));
-$noReportCount   = count(array_filter($records, fn($r) => empty($r['complete'])));
-$passMark        = PASS_MARK;
-$passCount       = count(array_filter($records, function($r) use ($passMark) {
+$completeCount = count(array_filter($records, function($r) {
+    if (!hasReport()) return !empty($r['complete']);
+    return !empty($r['complete']) && array_key_exists('report_mark', $r);
+}));
+$authFailCount = count(array_filter($records, fn($r) => ($r['authorship'] ?? '') === 'fail'));
+$noReportCount = count(array_filter($records, function($r) {
+    if (!hasReport()) return false;
+    $m = $r['matric'] ?? '';
+    return !array_key_exists('report_mark', $r)
+        && (file_exists(SUBMISSIONS_DIR . $m . '.html') || file_exists(SUBMISSIONS_DIR . $m . '.pdf'));
+}));
+$noSubmissionCount = count(array_filter($records, function($r) {
+    if (!hasReport()) return false;
+    $m = $r['matric'] ?? '';
+    return !file_exists(SUBMISSIONS_DIR . $m . '.html') && !file_exists(SUBMISSIONS_DIR . $m . '.pdf');
+}));
+$passMark  = PASS_MARK;
+$passCount = count(array_filter($records, function($r) use ($passMark) {
     if (($r['authorship'] ?? '') === 'fail') return false;
     if (empty($r['complete'])) return false;
-    $reportM2 = defined('REPORT_WEIGHT') ? floatval($r['report_mark'] ?? 0) : 0.0;
+    if (hasReport() && !array_key_exists('report_mark', $r)) return false;
+    $reportM2 = hasReport() ? floatval($r['report_mark'] ?? 0) : 0.0;
     $sessionTotal2 = 0.0;
     foreach (DEMO_CRITERIA_LABELS as $key => $_) {
         if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
@@ -145,7 +159,7 @@ $passCount       = count(array_filter($records, function($r) use ($passMark) {
 <body>
 <div class="page-header">
   <h1><?= MODULE_ID ?> - Marks Export</h1>
-  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <a href="demo.php">Demo form</a> &nbsp;|&nbsp; <?php if (defined('REPORT_WEIGHT')): ?><a href="report.php">Report form</a> &nbsp;|&nbsp; <?php endif; ?><a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
+  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <a href="demo.php">Demo form</a> &nbsp;|&nbsp; <?php if (hasReport()): ?><a href="report.php">Report form</a> &nbsp;|&nbsp; <?php endif; ?><a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
 </div>
 <main>
 
@@ -155,7 +169,10 @@ $passCount       = count(array_filter($records, function($r) use ($passMark) {
     <div class="stat"><div class="s-label">Total records</div><div class="s-val"><?= count($records) ?></div></div>
     <div class="stat"><div class="s-label">Fully complete</div><div class="s-val"><?= $completeCount ?></div></div>
     <div class="stat"><div class="s-label">Passed (≥<?= $passMark ?>%)</div><div class="s-val"><?= $passCount ?></div></div>
-    <?php if (defined('REPORT_WEIGHT')): ?><div class="stat warn"><div class="s-label">Report not yet marked</div><div class="s-val"><?= $noReportCount ?></div></div><?php endif; ?>
+    <?php if (hasReport()): ?>
+    <div class="stat warn"><div class="s-label">Report not yet marked</div><div class="s-val"><?= $noReportCount ?></div></div>
+    <div class="stat warn"><div class="s-label">No report submitted</div><div class="s-val"><?= $noSubmissionCount ?></div></div>
+    <?php endif; ?>
     <div class="stat danger"><div class="s-label">Authorship failures</div><div class="s-val"><?= $authFailCount ?></div></div>
   </div>
   <p style="font-size:.8rem;color:#64748b;margin-bottom:1rem;">
@@ -174,13 +191,13 @@ $passCount       = count(array_filter($records, function($r) use ($passMark) {
       <tr>
         <th>Matric</th>
         <th>Demo Marker</th>
-        <?php if (defined('REPORT_WEIGHT')): ?><th>Report Marker</th><?php endif; ?>
+        <?php if (hasReport()): ?><th>Report Marker</th><?php endif; ?>
         <th>Tier</th>
         <th>Tech</th>
         <th>Design</th>
         <th>Demo</th>
         <th>Duration</th>
-        <?php if (defined('REPORT_WEIGHT')): ?><th>Report</th><?php endif; ?>
+        <?php if (hasReport()): ?><th>Report</th><?php endif; ?>
         <th>Total</th>
         <th>Auth</th>
         <th>Status</th>
@@ -190,7 +207,7 @@ $passCount       = count(array_filter($records, function($r) use ($passMark) {
     <tbody>
     <?php foreach ($records as $r):
         $isReferral = ($r['authorship'] ?? '') === 'fail';
-        $report = defined('REPORT_WEIGHT') ? floatval($r['report_mark'] ?? 0) : 0;
+        $report = hasReport() ? floatval($r['report_mark'] ?? 0) : 0;
         $sessionTotal3 = 0.0;
         foreach (DEMO_CRITERIA_LABELS as $key => $_) {
             if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
@@ -201,18 +218,24 @@ $passCount       = count(array_filter($records, function($r) use ($passMark) {
         $tierCls = str_starts_with($tier, 'advanced') ? 'tier-adv' : (str_starts_with($tier, 'intermediate') ? 'tier-mid' : 'tier-bas');
         $auth    = $isReferral
             ? '<span class="badge badge-fail">Misconduct Referral</span>'
-            : '<span class="badge badge-pass">Pass</span>';
-        $status  = !empty($r['complete'])
-            ? '<span class="badge badge-complete">Complete</span>'
-            : (defined('REPORT_WEIGHT')
-                ? '<span class="badge badge-pending">Report pending</span>'
-                : '<span class="badge badge-pending">In progress</span>');
-        $markColspan = 5 + (defined('REPORT_WEIGHT') ? 1 : 0);
+            : '<span class="badge badge-pass">Confirmed</span>';
+        $isReportMarked = !hasReport() || array_key_exists('report_mark', $r);
+        $hasSubmission  = hasReport()
+            && (file_exists(SUBMISSIONS_DIR . ($r['matric'] ?? '') . '.html')
+             || file_exists(SUBMISSIONS_DIR . ($r['matric'] ?? '') . '.pdf'));
+        $status = $isReferral
+            ? '<span class="badge badge-fail">Referred</span>'
+            : (($hasSubmission && !$isReportMarked)
+                ? '<span class="badge badge-pending">Pending</span>'
+                : ($total >= $passMark
+                    ? '<span class="badge badge-pass">Pass</span>'
+                    : '<span class="badge badge-fail">Fail</span>'));
+        $markColspan = 5 + (hasReport() ? 1 : 0);
     ?>
     <tr<?= $isReferral ? ' class="misconduct-row"' : '' ?>>
       <td><?= htmlspecialchars($r['matric'] ?? '') ?></td>
       <td><?= htmlspecialchars($r['marker'] ?? '') ?></td>
-      <?php if (defined('REPORT_WEIGHT')): ?><td><?= htmlspecialchars($r['report_marker'] ?? '-') ?></td><?php endif; ?>
+      <?php if (hasReport()): ?><td><?= htmlspecialchars($r['report_marker'] ?? '-') ?></td><?php endif; ?>
       <td class="<?= $tierCls ?>"><?= htmlspecialchars($tier) ?></td>
       <?php if ($isReferral): ?>
       <td colspan="<?= $markColspan ?>" class="misconduct-label">No mark calculated — pending academic misconduct referral</td>
@@ -221,13 +244,13 @@ $passCount       = count(array_filter($records, function($r) use ($passMark) {
       <td><?= intval($r['design']['total'] ?? 0) ?></td>
       <td><?= intval($r['demo_mark'] ?? 0) ?></td>
       <td><?= format_duration(isset($r['demo_duration']) ? (int)$r['demo_duration'] : null) ?></td>
-      <?php if (defined('REPORT_WEIGHT')): ?><td><?= $report ?: '-' ?></td><?php endif; ?>
+      <?php if (hasReport()): ?><td><?= $hasSubmission ? ($report ?: '-') : 'N/A' ?></td><?php endif; ?>
       <td><strong><?= $total ?></strong></td>
       <?php endif; ?>
       <td><?= $auth ?></td>
       <td><?= $status ?></td>
       <td>
-        <a href="demo.php?matric=<?= urlencode($r['matric'] ?? '') ?>">Edit</a><?php if (defined('REPORT_WEIGHT')): ?> &nbsp;| <a href="report.php?matric=<?= urlencode($r['matric'] ?? '') ?>">Report</a><?php endif; ?>
+        <a href="demo.php?matric=<?= urlencode($r['matric'] ?? '') ?>">Edit</a><?php if (hasReport()): ?> &nbsp;| <a href="report.php?matric=<?= urlencode($r['matric'] ?? '') ?>">Report</a><?php endif; ?>
       </td>
     </tr>
     <?php endforeach; ?>

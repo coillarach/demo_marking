@@ -169,7 +169,7 @@ function buildFeedbackComment(array $r): string {
         if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
         $sessionTotal += getCriterionMark($r, $key);
     }
-    $total = round($sessionTotal + (defined('REPORT_WEIGHT') ? $reportM : 0), 1);
+    $total = round($sessionTotal + (hasReport() ? $reportM : 0), 1);
 
     $authorship = $r['authorship'] ?? 'pass';
     $comment    = trim($r['misconduct_comment'] ?? '');
@@ -232,7 +232,7 @@ function buildFeedbackComment(array $r): string {
         $criteriaLines,
         [
             '',
-            ...(defined('REPORT_WEIGHT') ? [
+            ...(hasReport() ? [
                 "Critical Report ({$reportMax}%): {$reportM}/{$reportMax}",
                 trim($r['report_comment'] ?? '') ?: 'Report not yet marked.',
             ] : []),

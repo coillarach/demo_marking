@@ -22,13 +22,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= MODULE_ID ?> — Demo Marking</title>
+<title><?= MODULE_ID ?> - Demo Marking</title>
 <link rel="stylesheet" href="static/login.css">
 </head>
 <body>
 <div class="login-wrap">
   <div class="login-card">
-    <h1><?= MODULE_ID ?> — Demo Marking</h1>
+    <h1><?= MODULE_ID ?> - Demo Marking</h1>
     <?php if ($error): ?>
       <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>

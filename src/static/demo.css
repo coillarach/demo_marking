@@ -1,6 +1,6 @@
 /* ── Demo marking sheet — page-specific styles ───────────────────── */
 
-main { max-width: 860px; }
+main { max-width: 960px; }
 .field textarea { min-height: 60px; }
 
 /* KQ required-category badge */

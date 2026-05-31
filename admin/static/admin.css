@@ -10,8 +10,8 @@ a { color: #2563eb; }
 .page-header a { color: #93c5fd; font-size: .8rem; }
 
 /* Main */
-main { max-width: 960px; margin: 1.5rem auto; padding: 0 1rem 4rem; }
-main.wide { max-width: 1200px; }
+main { max-width: 960px; margin: 1rem auto; padding: 0 .5rem 4rem; }
+main.wide { max-width: 1400px; }
 
 /* Cards */
 .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.1); padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }

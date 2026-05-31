@@ -56,6 +56,8 @@ if (!$isNew) {
                 'tier_ranges'          => defined('TIER_RANGES')          ? TIER_RANGES          : null,
                 'tier_rules'           => defined('TIER_RULES')           ? TIER_RULES           : null,
                 'feedback_tier_labels' => defined('FEEDBACK_TIER_LABELS') ? FEEDBACK_TIER_LABELS : null,
+                'demo_criteria_labels' => defined('DEMO_CRITERIA_LABELS') ? DEMO_CRITERIA_LABELS : null,
+                'kq_criterion_map'     => defined('KQ_CRITERION_MAP')     ? KQ_CRITERION_MAP     : null,
                 'questions'            => defined('QUESTIONS')            ? QUESTIONS            : null,
                 'knowledge_questions'  => defined('KNOWLEDGE_QUESTIONS')  ? KNOWLEDGE_QUESTIONS  : null,
                 'design_criteria'      => defined('DESIGN_CRITERIA')      ? DESIGN_CRITERIA      : null,

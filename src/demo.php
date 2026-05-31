@@ -2,11 +2,11 @@
 require_once __DIR__ . '/auth_check.php';
 $studentsFileReady = file_exists(DATA_DIR . 'students.csv');
 $matricList = readStudentList();
-$seMode     = defined('KQ_CRITERION_MAP');
+$seMode     = array_key_exists('communication', MARK_WEIGHTS);
 $techMax    = round(MARK_WEIGHTS['tech']   * 100);
 $designMax  = $seMode ? 0 : round(MARK_WEIGHTS['design'] * 100);
 $demoMax    = $seMode ? round(MARK_WEIGHTS['communication'] * 100) : round(MARK_WEIGHTS['demo'] * 100);
-$reportMax  = round((MARK_WEIGHTS['report'] ?? (defined('REPORT_WEIGHT') ? REPORT_WEIGHT : 0)) * 100);
+$reportMax  = round((MARK_WEIGHTS['report'] ?? (hasReport() ? REPORT_WEIGHT : 0)) * 100);
 $sessionMax    = $seMode ? 100 : ($techMax + $designMax + $demoMax);
 $preloadMatric = preg_replace('/[^a-zA-Z0-9]/', '', $_GET['matric'] ?? '');
 ?>
@@ -24,7 +24,7 @@ $preloadMatric = preg_replace('/[^a-zA-Z0-9]/', '', $_GET['matric'] ?? '');
 
 <div class="page-header">
   <h1><?= MODULE_ID ?> - Demo Marking</h1>
-  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <?php if (defined('REPORT_WEIGHT')): ?><a href="report.php">Report form</a> &nbsp;|&nbsp; <?php endif; ?><a href="export.php">Export CSV</a> &nbsp;|&nbsp; <a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
+  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <?php if (hasReport()): ?><a href="report.php">Report form</a> &nbsp;|&nbsp; <?php endif; ?><a href="export.php">Export CSV</a> &nbsp;|&nbsp; <a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
 </div>
 
 <main>

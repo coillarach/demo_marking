@@ -67,6 +67,10 @@ function generate_config(array $d): string {
     $out .= "define('TIER_RULES', " . php_array_export($d['tier_rules']) . ");\n\n";
     $out .= "// ── Feedback strings ──────────────────────────────────────────────────────────\n";
     $out .= "define('FEEDBACK_TIER_LABELS', " . php_array_export($d['feedback_tier_labels']) . ");\n\n";
+    $out .= "// ── Demo criteria labels ──────────────────────────────────────────────────────\n";
+    $out .= "define('DEMO_CRITERIA_LABELS', " . php_array_export($d['demo_criteria_labels']) . ");\n\n";
+    $out .= "// ── KQ criterion map ──────────────────────────────────────────────────────────\n";
+    $out .= "define('KQ_CRITERION_MAP', " . php_array_export($d['kq_criterion_map']) . ");\n\n";
     $out .= "// ── Knowledge-check questions ─────────────────────────────────────────────────\n";
     $out .= "define('KNOWLEDGE_QUESTIONS', " . php_array_export($d['knowledge_questions']) . ");\n\n";
     $out .= "// ── Feature Q&A question banks ────────────────────────────────────────────────\n";
@@ -115,6 +119,8 @@ function default_config_details(): array {
             'partial'       => 'Some basic enhancements were attempted but not all were fully functional.',
             'fail'          => 'The submission did not meet the basic requirements.',
         ],
+        'demo_criteria_labels' => [],
+        'kq_criterion_map'     => [],
         'questions'           => [],
         'knowledge_questions' => [],
         'design_criteria'     => [

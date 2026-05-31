@@ -26,8 +26,40 @@ if (strlen($matric) < 4 || strlen($matric) > 20) {
     exit;
 }
 
-$file = DATA_DIR . $matric . '.json';
 $mode = $data['mode'] ?? 'demo'; // 'demo' or 'report'
+
+// Demo saves only: enforce required KQ groups
+if ($mode === 'demo' && defined('KNOWLEDGE_QUESTIONS')) {
+    $required = [];
+    foreach (KNOWLEDGE_QUESTIONS as $topicKey => $group) {
+        if (!empty($group['require_one'])) {
+            $required[$topicKey] = $group['require_one'];
+        }
+    }
+    if ($required) {
+        $satisfied = array_fill_keys(array_unique(array_values($required)), false);
+        $kq = $data['kq'] ?? [];
+        foreach ($required as $topicKey => $groupName) {
+            if ($satisfied[$groupName]) continue;
+            $prefix = 'kq_' . $topicKey . '_';
+            foreach (array_keys($kq) as $name) {
+                if (strncmp($name, $prefix, strlen($prefix)) === 0) {
+                    $satisfied[$groupName] = true;
+                    break;
+                }
+            }
+        }
+        foreach ($satisfied as $groupName => $ok) {
+            if (!$ok) {
+                http_response_code(400);
+                echo json_encode(['ok' => false, 'error' => "Knowledge Check: required question group '$groupName' has no answer."]);
+                exit;
+            }
+        }
+    }
+}
+
+$file = DATA_DIR . $matric . '.json';
 
 // If updating report data, merge with existing record
 if ($mode === 'report' && file_exists($file)) {
@@ -55,7 +87,7 @@ if ($mode === 'report' && file_exists($file)) {
     $data['marker_id']      = $_SESSION['marker_id']   ?? '';
     $data['demo_saved']     = $demoSaved;
     $data['demo_duration']  = $duration;
-    $data['complete']       = $existing['complete'] ?? false;
+    $data['complete']       = hasReport() ? ($existing['complete'] ?? false) : true;
     $data = array_merge($existing, $data);
 }
 

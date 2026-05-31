@@ -18,11 +18,11 @@ $count   = 0;
 function count_csv_students(string $file): int {
     if (!file_exists($file)) return 0;
     $handle = fopen($file, 'r');
-    $header = fgetcsv($handle);
+    $header = fgetcsv($handle, escape: '\\');
     $idx = $header ? array_search('Username', $header) : false;
     if ($idx === false) { fclose($handle); return 0; }
     $n = 0;
-    while (($row = fgetcsv($handle)) !== false) {
+    while (($row = fgetcsv($handle, escape: '\\')) !== false) {
         if (trim($row[$idx] ?? '') !== '') $n++;
     }
     fclose($handle);
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tmp = tmpfile();
             fwrite($tmp, $raw);
             rewind($tmp);
-            $header = fgetcsv($tmp);
+            $header = fgetcsv($tmp, escape: '\\');
             $usernameIdx = $header ? array_search('Username', $header) : false;
             fclose($tmp);
             if ($usernameIdx === false) {

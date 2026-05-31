@@ -47,13 +47,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'uplo
             $tmp = tmpfile();
             fwrite($tmp, $raw);
             rewind($tmp);
-            $header = fgetcsv($tmp);
+            $header = fgetcsv($tmp, escape: '\\');
             $usernameIdx = $header ? array_search('Username', $header) : false;
             if ($usernameIdx === false) {
                 $marksheetErrors[] = 'The uploaded file does not appear to be a Moodle offline grading marksheet (no "Username" column found).';
             } else {
                 $count = 0;
-                while (($row = fgetcsv($tmp)) !== false) {
+                while (($row = fgetcsv($tmp, escape: '\\')) !== false) {
                     if (trim($row[$usernameIdx] ?? '') !== '') $count++;
                 }
                 fclose($tmp);
@@ -73,10 +73,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'uplo
 // Count current marksheet students
 if ($marksheetFile !== '' && file_exists($marksheetFile) && !$marksheetSuccess) {
     $mh = fopen($marksheetFile, 'r');
-    $mh_header = fgetcsv($mh);
+    $mh_header = fgetcsv($mh, escape: '\\');
     $mh_idx = $mh_header ? array_search('Username', $mh_header) : false;
     if ($mh_idx !== false) {
-        while (($row = fgetcsv($mh)) !== false) {
+        while (($row = fgetcsv($mh, escape: '\\')) !== false) {
             if (trim($row[$mh_idx] ?? '') !== '') $marksheetCount++;
         }
     }
