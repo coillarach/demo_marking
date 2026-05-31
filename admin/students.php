@@ -9,31 +9,24 @@ $csrf = $_SESSION['module_csrf'];
 
 $targets    = load_deploy_targets();
 $deployTarget = isset($targets[$currentModuleId]) ? rtrim($targets[$currentModuleId], '/\\') : '';
-$studentsFile = $deployTarget !== '' ? $deployTarget . '/data/students.txt' : '';
+$studentsFile = $deployTarget !== '' ? $deployTarget . '/data/students.csv' : '';
 
 $errors  = [];
 $success = false;
 $count   = 0;
 
-function parse_student_lines(string $raw): array {
-    $lines = preg_split('/\r\n|\r|\n/', $raw);
-    $out = [];
-    foreach ($lines as $line) {
-        $trimmed = rtrim($line);
-        if ($trimmed === '') continue;
-        $out[] = $trimmed;
+function count_csv_students(string $file): int {
+    if (!file_exists($file)) return 0;
+    $handle = fopen($file, 'r');
+    $header = fgetcsv($handle);
+    $idx = $header ? array_search('Username', $header) : false;
+    if ($idx === false) { fclose($handle); return 0; }
+    $n = 0;
+    while (($row = fgetcsv($handle)) !== false) {
+        if (trim($row[$idx] ?? '') !== '') $n++;
     }
-    return $out;
-}
-
-// Read current list for display
-$currentText = '';
-if ($studentsFile !== '' && file_exists($studentsFile)) {
-    $currentText = file_get_contents($studentsFile);
-    $count = count(array_filter(
-        parse_student_lines($currentText),
-        fn($l) => $l[0] !== '#'
-    ));
+    fclose($handle);
+    return $n;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -44,40 +37,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($deployTarget === '') {
         $errors[] = 'No deployment target recorded for this module. Deploy the module first.';
+    } elseif (empty($_FILES['marksheet_file']['tmp_name'])) {
+        $errors[] = 'No file was uploaded.';
     } else {
-        $realTarget = realpath($deployTarget);
-        if ($realTarget === false || $realTarget !== realpath($deployTarget)) {
-            $errors[] = 'Deployment directory not found: ' . $deployTarget;
-        } elseif (!is_writable($realTarget . '/data')) {
-            $errors[] = 'The data/ directory is not writable. Check server permissions.';
+        $raw = file_get_contents($_FILES['marksheet_file']['tmp_name']);
+        if ($raw === false) {
+            $errors[] = 'Could not read uploaded file.';
         } else {
-            $source = $_POST['source'] ?? 'text';
-            $raw = '';
-
-            if ($source === 'upload') {
-                if (empty($_FILES['students_file']['tmp_name'])) {
-                    $errors[] = 'No file was uploaded.';
-                } else {
-                    $raw = file_get_contents($_FILES['students_file']['tmp_name']);
-                    if ($raw === false) $errors[] = 'Could not read uploaded file.';
-                }
+            $tmp = tmpfile();
+            fwrite($tmp, $raw);
+            rewind($tmp);
+            $header = fgetcsv($tmp);
+            $usernameIdx = $header ? array_search('Username', $header) : false;
+            fclose($tmp);
+            if ($usernameIdx === false) {
+                $errors[] = 'The uploaded file does not appear to be a Moodle offline grading marksheet (no "Username" column found).';
+            } elseif (!is_writable($deployTarget . '/data')) {
+                $errors[] = 'The data/ directory is not writable. Check server permissions.';
+            } elseif (file_put_contents($studentsFile, $raw, LOCK_EX) === false) {
+                $errors[] = 'Failed to write students.csv.';
             } else {
-                $raw = $_POST['students_text'] ?? '';
-            }
-
-            if (empty($errors)) {
-                $lines = parse_student_lines($raw);
-                $content = implode("\n", $lines) . (count($lines) ? "\n" : '');
-                if (file_put_contents($studentsFile, $content, LOCK_EX) === false) {
-                    $errors[] = 'Failed to write students file.';
-                } else {
-                    $currentText = $content;
-                    $count = count(array_filter($lines, fn($l) => $l[0] !== '#'));
-                    $success = true;
-                }
+                $success = true;
+                $count   = count_csv_students($studentsFile);
             }
         }
     }
+}
+
+if (!$success) {
+    $count = count_csv_students($studentsFile);
 }
 ?>
 <!DOCTYPE html>
@@ -112,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <?php if ($success): ?>
   <div class="alert alert-success">
-    <strong>Student list saved.</strong> <?= $count ?> student<?= $count !== 1 ? 's' : '' ?> loaded.
+    <strong>Marksheet saved.</strong> <?= $count ?> student<?= $count !== 1 ? 's' : '' ?> loaded.
   </div>
 <?php endif; ?>
 
@@ -125,41 +113,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php endif; ?>
 
 <div class="card">
-  <h2>Current list — <?= $count ?> student<?= $count !== 1 ? 's' : '' ?></h2>
+  <h2>Moodle Offline Grading Marksheet — <?= $count ?> student<?= $count !== 1 ? 's' : '' ?></h2>
   <p style="font-size:.8rem;color:#475569;margin-bottom:1rem;">
-    One matric number per line. Lines beginning with <code>#</code> are treated as comments and ignored.
-    Saving replaces the entire list.
+    Upload the offline grading marksheet exported from Moodle for this assessment. The file provides
+    the participant identifiers used in the marks CSV export and the student list used for autocomplete
+    during marking. Uploading a new file replaces the existing one.
   </p>
 
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-    <input type="hidden" name="source" value="text" id="source-field">
-    <div class="field">
-      <label for="students_text">Matric numbers</label>
-      <textarea id="students_text" name="students_text" rows="16"
-                style="font-family:monospace;font-size:.85rem;"><?= htmlspecialchars($currentText) ?></textarea>
+    <div class="field" style="max-width:420px;">
+      <label for="marksheet_file">Marksheet CSV file</label>
+      <input type="file" id="marksheet_file" name="marksheet_file" accept=".csv" required>
     </div>
-    <div class="btn-row">
-      <button type="submit" class="btn-primary">Save list</button>
-      <label class="btn-secondary" style="cursor:pointer;">
-        Upload file <input type="file" name="students_file" accept=".txt" style="display:none"
-                           onchange="handleUpload(this)">
-      </label>
+    <div class="btn-row" style="margin-top:.75rem;">
+      <button type="submit" class="btn-primary">Upload marksheet</button>
     </div>
   </form>
 </div>
-
-<script>
-function handleUpload(input) {
-    if (!input.files.length) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        document.getElementById('students_text').value = e.target.result;
-        document.getElementById('source-field').value = 'text';
-    };
-    reader.readAsText(input.files[0]);
-}
-</script>
 
 <?php endif; ?>
 </main>

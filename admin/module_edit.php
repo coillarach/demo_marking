@@ -22,6 +22,67 @@ if (empty($_SESSION['module_csrf'])) {
 }
 $csrf = $_SESSION['module_csrf'];
 
+// ─── Marksheet upload handler ─────────────────────────────────────
+$marksheetErrors  = [];
+$marksheetSuccess = false;
+$marksheetCount   = 0;
+$targets      = load_deploy_targets();
+$deployTarget = isset($targets[$currentModuleId]) ? rtrim($targets[$currentModuleId], '/\\') : '';
+$marksheetFile = $deployTarget !== '' ? $deployTarget . '/data/students.csv' : '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'upload_marksheet') {
+    if (($_POST['_csrf'] ?? '') !== $csrf) {
+        http_response_code(403);
+        die('Invalid CSRF token.');
+    }
+    if ($deployTarget === '') {
+        $marksheetErrors[] = 'No deployment target recorded for this module. Deploy the module first.';
+    } elseif (empty($_FILES['marksheet_file']['tmp_name'])) {
+        $marksheetErrors[] = 'No file was uploaded.';
+    } else {
+        $raw = file_get_contents($_FILES['marksheet_file']['tmp_name']);
+        if ($raw === false) {
+            $marksheetErrors[] = 'Could not read uploaded file.';
+        } else {
+            $tmp = tmpfile();
+            fwrite($tmp, $raw);
+            rewind($tmp);
+            $header = fgetcsv($tmp);
+            $usernameIdx = $header ? array_search('Username', $header) : false;
+            if ($usernameIdx === false) {
+                $marksheetErrors[] = 'The uploaded file does not appear to be a Moodle offline grading marksheet (no "Username" column found).';
+            } else {
+                $count = 0;
+                while (($row = fgetcsv($tmp)) !== false) {
+                    if (trim($row[$usernameIdx] ?? '') !== '') $count++;
+                }
+                fclose($tmp);
+                if (!is_writable($deployTarget . '/data')) {
+                    $marksheetErrors[] = 'The data/ directory is not writable.';
+                } elseif (file_put_contents($marksheetFile, $raw, LOCK_EX) === false) {
+                    $marksheetErrors[] = 'Failed to write students.csv.';
+                } else {
+                    $marksheetSuccess = true;
+                    $marksheetCount   = $count;
+                }
+            }
+        }
+    }
+}
+
+// Count current marksheet students
+if ($marksheetFile !== '' && file_exists($marksheetFile) && !$marksheetSuccess) {
+    $mh = fopen($marksheetFile, 'r');
+    $mh_header = fgetcsv($mh);
+    $mh_idx = $mh_header ? array_search('Username', $mh_header) : false;
+    if ($mh_idx !== false) {
+        while (($row = fgetcsv($mh)) !== false) {
+            if (trim($row[$mh_idx] ?? '') !== '') $marksheetCount++;
+        }
+    }
+    fclose($mh);
+}
+
 // Read current values from constants
 $weights = defined('MARK_WEIGHTS') ? MARK_WEIGHTS : ['tech'=>0.4,'design'=>0.2,'demo'=>0.25,'report'=>0.15];
 $timerTotal = defined('TIMER_TOTAL') ? TIMER_TOTAL : 300;
@@ -423,6 +484,43 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES); }
     <span id="save-hint" style="font-size:.8rem;color:#64748b;"></span>
   </div>
 </form>
+<div class="card" style="margin-top:1.5rem;">
+  <h2>Moodle Offline Grading Marksheet</h2>
+  <p style="font-size:.85rem;color:#475569;margin-bottom:.75rem;">
+    Upload the offline grading marksheet exported from Moodle for this assessment. The file provides the participant identifiers used in the marks CSV export, and the student list used for autocomplete during marking.
+    <?php if ($marksheetFile === ''): ?>
+      <strong>Deploy the module first before uploading the marksheet.</strong>
+    <?php elseif (file_exists($marksheetFile)): ?>
+      Currently loaded: <strong><?= $marksheetCount ?> student<?= $marksheetCount !== 1 ? 's' : '' ?></strong>.
+    <?php else: ?>
+      No marksheet uploaded yet.
+    <?php endif; ?>
+  </p>
+
+  <?php if ($marksheetSuccess): ?>
+    <div class="alert alert-success"><strong>Marksheet saved.</strong> <?= $marksheetCount ?> student<?= $marksheetCount !== 1 ? 's' : '' ?> loaded.</div>
+  <?php endif; ?>
+  <?php if (!empty($marksheetErrors)): ?>
+    <div class="alert alert-danger">
+      <?php foreach ($marksheetErrors as $e): ?><div><?= h($e) ?></div><?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+  <?php if ($marksheetFile !== ''): ?>
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf"   value="<?= h($csrf) ?>">
+    <input type="hidden" name="_action" value="upload_marksheet">
+    <div class="field" style="max-width:420px;">
+      <label for="marksheet_file">Marksheet CSV file</label>
+      <input type="file" id="marksheet_file" name="marksheet_file" accept=".csv" required>
+    </div>
+    <div class="btn-row" style="margin-top:.75rem;">
+      <button type="submit" class="btn-primary">Upload marksheet</button>
+    </div>
+  </form>
+  <?php endif; ?>
+</div>
+
 </main>
 
 <script>

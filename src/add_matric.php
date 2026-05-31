@@ -11,12 +11,4 @@ if (!preg_match('/^\d{8}$/', $matric)) {
     exit;
 }
 
-$existing = readStudentList();
-
-if (in_array($matric, $existing)) {
-    echo json_encode(['ok' => true, 'added' => false]);
-    exit;
-}
-
-file_put_contents(DATA_DIR . 'students.txt', $matric . PHP_EOL, FILE_APPEND | LOCK_EX);
-echo json_encode(['ok' => true, 'added' => true]);
+echo json_encode(['ok' => true, 'added' => false]);

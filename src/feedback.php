@@ -169,7 +169,7 @@ function buildFeedbackComment(array $r): string {
         if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
         $sessionTotal += getCriterionMark($r, $key);
     }
-    $total = round($sessionTotal + $reportM, 1);
+    $total = round($sessionTotal + (defined('REPORT_WEIGHT') ? $reportM : 0), 1);
 
     $authorship = $r['authorship'] ?? 'pass';
     $comment    = trim($r['misconduct_comment'] ?? '');
@@ -226,12 +226,16 @@ function buildFeedbackComment(array $r): string {
     }
 
     $lines = array_merge(
-        [$auth_line, $kq_section],
+        [$auth_line],
+        $authorship === 'fail' ? ['No mark has been submitted pending the outcome of the academic misconduct investigation.'] : [],
+        [$kq_section],
         $criteriaLines,
         [
             '',
-            "Critical Report ({$reportMax}%): {$reportM}/{$reportMax}",
-            trim($r['report_comment'] ?? '') ?: 'Report not yet marked.',
+            ...(defined('REPORT_WEIGHT') ? [
+                "Critical Report ({$reportMax}%): {$reportM}/{$reportMax}",
+                trim($r['report_comment'] ?? '') ?: 'Report not yet marked.',
+            ] : []),
             '',
             "Overall: {$total}/100 - {$passStatus} (pass mark: {$passMark}%)",
         ]

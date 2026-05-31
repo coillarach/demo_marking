@@ -23,6 +23,11 @@ tr:hover td { background: #f8fafc; }
 .badge-complete { background: #2563eb; }
 .badge-pending  { background: #94a3b8; }
 
+/* Misconduct referral rows */
+tr.misconduct-row td { background: #fef9c3; }
+tr.misconduct-row:hover td { background: #fef08a; }
+.misconduct-label { font-size: .8rem; color: #92400e; font-style: italic; }
+
 /* Tier colours */
 .tier-adv { color: #065f46; font-weight: 600; }
 .tier-mid { color: #1e40af; font-weight: 600; }

@@ -1,12 +1,14 @@
 <?php
 require_once __DIR__ . '/auth_check.php';
+$studentsFileReady = file_exists(DATA_DIR . 'students.csv');
 $matricList = readStudentList();
 $seMode     = defined('KQ_CRITERION_MAP');
 $techMax    = round(MARK_WEIGHTS['tech']   * 100);
 $designMax  = $seMode ? 0 : round(MARK_WEIGHTS['design'] * 100);
 $demoMax    = $seMode ? round(MARK_WEIGHTS['communication'] * 100) : round(MARK_WEIGHTS['demo'] * 100);
 $reportMax  = round((MARK_WEIGHTS['report'] ?? (defined('REPORT_WEIGHT') ? REPORT_WEIGHT : 0)) * 100);
-$sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
+$sessionMax    = $seMode ? 100 : ($techMax + $designMax + $demoMax);
+$preloadMatric = preg_replace('/[^a-zA-Z0-9]/', '', $_GET['matric'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="en-GB">
@@ -22,10 +24,16 @@ $sessionMax = $seMode ? 100 : ($techMax + $designMax + $demoMax);
 
 <div class="page-header">
   <h1><?= MODULE_ID ?> - Demo Marking</h1>
-  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <a href="report.php">Report form</a> &nbsp;|&nbsp; <a href="export.php">Export CSV</a> &nbsp;|&nbsp; <a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
+  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <?php if (defined('REPORT_WEIGHT')): ?><a href="report.php">Report form</a> &nbsp;|&nbsp; <?php endif; ?><a href="export.php">Export CSV</a> &nbsp;|&nbsp; <a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
 </div>
 
 <main>
+
+<?php if (!$studentsFileReady): ?>
+<div class="alert alert-warning">
+  The Moodle offline grading marksheet has not been uploaded. Student autocomplete and participant IDs in the CSV export will be unavailable. Upload it via <a href="configure.php">Configure</a>.
+</div>
+<?php endif; ?>
 
 <!-- ── Section 0: Identification ─────────────────────────────────── -->
 <div class="card">
@@ -644,6 +652,7 @@ function loadRecord(r) {
   loadedMatric = matric;
   captureSnapshot();
   setLoadStatus('loaded', matric);
+  updateKQRequiredBadges();
 }
 
 // ─── Fetch and load record ────────────────────────────────────────
@@ -1341,23 +1350,15 @@ if (!/^\d{8}$/.test(data.matric)) errs.push('Enter a valid 8-digit matriculation
     }
   }
 
-  // Knowledge Check: at least one question required per flagged group
-  if (Object.keys(KQ_REQUIRED_GROUPS).length) {
-    const satisfied = {};
-    for (const group of new Set(Object.values(KQ_REQUIRED_GROUPS))) satisfied[group] = false;
-    for (const [topicKey, group] of Object.entries(KQ_REQUIRED_GROUPS)) {
-      if (satisfied[group]) continue;
-      if (document.querySelectorAll(`input[type=radio][name^="kq_${topicKey}_"]:checked`).length) {
-        satisfied[group] = true;
-      }
-    }
-    for (const [group, ok] of Object.entries(satisfied)) {
-      if (!ok) {
-        const el = document.querySelector(`.kq-group[data-require-group="${group}"] .kq-summary`);
-        const label = el ? el.firstChild.textContent.trim() : group;
-        errs.push(`Knowledge Check: at least one question must be asked in the "${label}" area.`);
-      }
-    }
+  // Knowledge Check: block save if any required badge is still visible
+  const unsatisfiedGroups = new Set();
+  document.querySelectorAll('.kq-group[data-require-group] .kq-req-badge').forEach(badge => {
+    if (!badge.hidden) unsatisfiedGroups.add(badge.closest('.kq-group').dataset.requireGroup);
+  });
+  for (const group of unsatisfiedGroups) {
+    const el = document.querySelector(`.kq-group[data-require-group="${group}"] .kq-summary`);
+    const label = el ? el.firstChild.textContent.trim() : group;
+    errs.push(`Knowledge Check: at least one question must be asked in the "${label}" area.`);
   }
 
   return errs;
@@ -1476,6 +1477,7 @@ function resetForm() {
     setText('sum-ai', '0');
   }
   window.scrollTo(0,0);
+  updateKQRequiredBadges();
 }
 
 // ─── Demo timer ───────────────────────────────────────────────────
@@ -1621,6 +1623,8 @@ document.getElementById('reauth-pw').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('reauth-submit').click();
 });
 </script>
-<script>initMatricAutocomplete('matric', <?= json_encode($matricList) ?>);</script>
+<script>initMatricAutocomplete('matric', <?= json_encode($matricList) ?>);
+<?php if ($preloadMatric !== ''): ?>fetchAndLoad(<?= json_encode($preloadMatric) ?>);<?php endif; ?>
+</script>
 </body>
 </html>

@@ -20,6 +20,7 @@ $hasHtml = $record && file_exists(SUBMISSIONS_DIR . $matric . '.html');
 $hasPdf  = $record && file_exists(SUBMISSIONS_DIR . $matric . '.pdf');
 $hasAny  = $hasHtml || $hasPdf;
 
+$studentsFileReady = file_exists(DATA_DIR . 'students.csv');
 $matricList = readStudentList();
 if (empty($matricList)) {
     $files      = glob(DATA_DIR . '*.json') ?: [];
@@ -53,14 +54,21 @@ $navNext  = ($navIdx !== false && $navIdx < $navTotal - 1) ? $matricList[$navIdx
   <h1><?= MODULE_ID ?> - Report Marking</h1>
   <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <a href="demo.php">Demo form</a> &nbsp;|&nbsp; <a href="export.php">Export CSV</a> &nbsp;|&nbsp; <a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
 </div>
+<?php if (!$studentsFileReady): ?>
+<div style="padding:0 1rem .5rem;">
+  <div class="alert alert-warning">
+    The Moodle offline grading marksheet has not been uploaded. Student navigation and participant IDs in the CSV export will be unavailable. Upload it via <a href="configure.php">Configure</a>.
+  </div>
+</div>
+<?php endif; ?>
 <main class="report-split">
 
 <div class="viewer-pane">
 <?php if ($matric !== ''): ?>
   <div class="viewer-toolbar">
     <?php if ($hasHtml && $hasPdf): ?>
-      <button class="btn-view active" id="btn-html" onclick="showView('html')">HTML</button>
-      <button class="btn-view"        id="btn-pdf"  onclick="showView('pdf')">PDF</button>
+      <button class="btn-view"        id="btn-html" onclick="showView('html')">HTML</button>
+      <button class="btn-view active" id="btn-pdf"  onclick="showView('pdf')">PDF</button>
     <?php elseif ($hasHtml): ?>
       <span class="viewer-format-label">HTML</span>
     <?php elseif ($hasPdf): ?>
@@ -85,7 +93,7 @@ $navNext  = ($navIdx !== false && $navIdx < $navTotal - 1) ? $matricList[$navIdx
 
   <?php if ($hasAny): ?>
     <iframe id="report-iframe"
-            src="submission.php?matric=<?= urlencode($matric) ?>&amp;fmt=<?= $hasHtml ? 'html' : 'pdf' ?>"
+            src="submission.php?matric=<?= urlencode($matric) ?>&amp;fmt=<?= $hasPdf ? 'pdf' : 'html' ?>"
             title="Student report"></iframe>
   <?php else: ?>
     <div class="viewer-no-submission">No submission file on record for <?= htmlspecialchars($matric) ?></div>
