@@ -17,6 +17,8 @@ usort($records, fn($a,$b) => strcmp($a['matric'] ?? '', $b['matric'] ?? ''));
 
 // ─── Handle CSV download ──────────────────────────────────────────
 if (isset($_GET['download'])) {
+    $verboseQA = !empty($_GET['verbose_qa']);
+
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . MODULE_ID . '_marks_' . date('Y-m-d') . '.csv"');
 
@@ -72,7 +74,7 @@ if (isset($_GET['download'])) {
                 if (isset($msCol['Grade']))                    $row[$msCol['Grade']]                    = $grade;
                 if (isset($msCol['Marking workflow state']))   $row[$msCol['Marking workflow state']]   = $state;
                 if (isset($msCol['Last modified (grade)']))    $row[$msCol['Last modified (grade)']]    = date('d/m/Y H:i');
-                if (isset($msCol['Feedback comments']))        $row[$msCol['Feedback comments']]        = buildFeedbackComment($r);
+                if (isset($msCol['Feedback comments']))        $row[$msCol['Feedback comments']]        = buildFeedbackComment($r, $verboseQA);
 
                 $row[] = format_duration(isset($r['demo_duration']) ? (int)$r['demo_duration'] : null);
                 $row[] = ($r['authorship'] ?? 'pass') === 'fail' ? trim($r['misconduct_comment'] ?? '') : '';
@@ -105,7 +107,7 @@ if (isset($_GET['download'])) {
             '', '', $matric, '',
             $grade, '100.00', $state, 'Yes', '',
             date('d/m/Y H:i'),
-            buildFeedbackComment($r),
+            buildFeedbackComment($r, $verboseQA),
             format_duration(isset($r['demo_duration']) ? (int)$r['demo_duration'] : null),
             ($r['authorship'] ?? 'pass') === 'fail' ? trim($r['misconduct_comment'] ?? '') : '',
         ], escape: '\\');
@@ -180,7 +182,14 @@ $passCount = count(array_filter($records, function($r) use ($passMark) {
     The CSV export includes all records. Rows with incomplete report marks will show <em>In marking</em> in the workflow state column.
     Rows where authorship failed will have an empty Grade.
   </p>
-  <a class="btn-primary" href="export.php?download=1">Download Moodle CSV</a>
+  <form method="get" action="export.php" style="display:inline-flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-top:.25rem;">
+    <input type="hidden" name="download" value="1">
+    <label style="font-size:.85rem;display:flex;align-items:center;gap:.4rem;cursor:pointer;">
+      <input type="checkbox" name="verbose_qa" value="1">
+      Include full question text for unanswered Q&amp;A
+    </label>
+    <button type="submit" class="btn-primary">Download Moodle CSV</button>
+  </form>
 </div>
 
 <?php if ($records): ?>

@@ -3,7 +3,48 @@
  * Feedback generation functions — shared by report.php and export.php
  */
 
-function techFeedback(array $r): string {
+function resolveKqItem(string $key, array $kqData, array $kqLabels): ?array {
+    if (preg_match('/^kq_([a-z]+)_(\d+)$/', $key, $m)) {
+        $tech  = $m[1];
+        $label = $kqLabels[$tech] ?? $tech;
+        $idx   = (int)$m[2];
+        $qText = KNOWLEDGE_QUESTIONS[$tech]['questions'][$idx]['q'] ?? null;
+        return [
+            'short'   => $label . ' Q' . ($idx + 1),
+            'verbose' => $qText ? '"(' . $label . '): ' . $qText . '"' : null,
+        ];
+    }
+    if (preg_match('/^kq_([a-z]+)_cust_\d+$/', $key, $m)) {
+        $tech  = $m[1];
+        $label = $kqLabels[$tech] ?? $tech;
+        $qText = trim($kqData[$key . '_text'] ?? '') ?: null;
+        return [
+            'short'   => $qText ? '"' . $qText . '"' : $label . ' custom question',
+            'verbose' => $qText ? '"(' . $label . '): ' . $qText . '"' : null,
+        ];
+    }
+    return null;
+}
+
+function resolveQaItem(string $key, array $qa, array $featureLabels): ?array {
+    if (preg_match('/^qa_([a-z_]+)_cust_(\d+)$/', $key, $m)) {
+        $fKey  = $m[1];
+        $label = $featureLabels[$fKey] ?? null;
+        $qText = trim($qa[$key . '_text'] ?? '') ?: null;
+    } elseif (preg_match('/^qa_([a-z_]+)_(\d+)$/', $key, $m)) {
+        $fKey  = $m[1];
+        $label = $featureLabels[$fKey] ?? $fKey;
+        $qText = QUESTIONS[$fKey]['questions'][(int)$m[2]]['q'] ?? null;
+    } else {
+        return null;
+    }
+    return [
+        'label'   => $label,
+        'verbose' => ($label && $qText) ? '"(' . $label . '): ' . $qText . '"' : null,
+    ];
+}
+
+function techFeedback(array $r, bool $verboseQA = false): string {
     $tier       = $r['tier'] ?? 'unknown';
     $features   = $r['features'] ?? [];
     $note       = trim($r['tech_note'] ?? '');
@@ -25,24 +66,26 @@ function techFeedback(array $r): string {
     $out = $tierLabels[$tier] ?? 'Enhancement tier: ' . $tier . '.';
     if ($featureStr) $out .= ' Features implemented: ' . $featureStr . '.';
 
-    $qa              = $r['qa'] ?? [];
-    $couldNotExplain = [];
-    $withPrompting   = [];
+    $qa          = $r['qa'] ?? [];
+    $noItems     = [];
+    $promptItems = [];
+
     foreach ($qa as $key => $val) {
         if (str_ends_with($key, '_text')) continue;
-        if (preg_match('/^qa_([a-z_]+)_cust_\d+$/', $key, $m)) {
-            $fLabel = $featureLabels[$m[1]] ?? null;
-        } elseif (preg_match('/^qa_([a-z_]+)_\d+$/', $key, $m)) {
-            $fLabel = $featureLabels[$m[1] ?? ''] ?? ($m[1] ?? '');
-        } else {
-            continue;
-        }
-        if ($val === 'no'     && $fLabel && !in_array($fLabel, $couldNotExplain)) $couldNotExplain[] = $fLabel;
-        if ($val === 'prompt' && $fLabel && !in_array($fLabel, $withPrompting))   $withPrompting[]   = $fLabel;
+        if ($val !== 'no' && $val !== 'prompt') continue;
+        $item = resolveQaItem($key, $qa, $featureLabels);
+        if (!$item || !$item['label']) continue;
+        $entry = $verboseQA ? ($item['verbose'] ?? $item['label']) : $item['label'];
+        if ($val === 'no')     $noItems[]     = $entry;
+        if ($val === 'prompt') $promptItems[] = $entry;
     }
-    if ($couldNotExplain) $out .= ' Could not explain: '      . implode(', ', array_unique($couldNotExplain)) . '.';
-    if ($withPrompting)   $out .= ' Required prompting on: '  . implode(', ', array_unique($withPrompting))   . '.';
-    if ($note)            $out .= ' ' . $note;
+    if (!$verboseQA) {
+        $noItems     = array_unique($noItems);
+        $promptItems = array_unique($promptItems);
+    }
+    if ($noItems)     $out .= ' Could not answer: '   . implode(', ', $noItems) . '.';
+    if ($promptItems) $out .= ' Required prompting: ' . implode(', ', $promptItems) . '.';
+    if ($note) $out .= ' ' . $note;
 
     return $out;
 }
@@ -149,9 +192,9 @@ function kqCriterionFeedback(array $r, string $criterion): string {
     return implode(' ', $sentences);
 }
 
-function getCriterionFeedback(array $r, string $key): string {
+function getCriterionFeedback(array $r, string $key, bool $verboseQA = false): string {
     return match($key) {
-        'tech'                              => techFeedback($r),
+        'tech'                              => techFeedback($r, $verboseQA),
         'design'                            => designFeedback($r),
         'demo', 'communication'             => demoFeedback($r),
         'testing', 'process', 'ai_usage'    => kqCriterionFeedback($r, $key),
@@ -159,7 +202,7 @@ function getCriterionFeedback(array $r, string $key): string {
     };
 }
 
-function buildFeedbackComment(array $r): string {
+function buildFeedbackComment(array $r, bool $verboseQA = false): string {
     $weights   = MARK_WEIGHTS;
     $reportMax = round(($weights['report'] ?? (defined('REPORT_WEIGHT') ? REPORT_WEIGHT : 0)) * 100);
     $reportM   = floatval($r['report_mark'] ?? 0);
@@ -179,36 +222,27 @@ function buildFeedbackComment(array $r): string {
         : 'Authorship confirmed at demonstration.';
 
     // Knowledge check summary — labels come from config
-    $kqData   = $r['kq'] ?? [];
-    $kqLabels = array_map(fn($g) => $g['label'], KNOWLEDGE_QUESTIONS);
-    $kqConcerns = [];
-    if ($kqData) {
-        $byTech = [];
-        foreach ($kqData as $key => $val) {
-            if (str_ends_with($key, '_text')) continue;
-            if (preg_match('/^kq_([a-z]+)_(\d+)$/', $key, $m)) {
-                $tech = $m[1];
-                $qi   = (int)$m[2] + 1;
-                if ($val === 'partial') $byTech[$tech]['partial'][] = 'Q' . $qi;
-                if ($val === 'no')      $byTech[$tech]['no'][]      = 'Q' . $qi;
-            } elseif (preg_match('/^kq_([a-z]+)_cust_\d+$/', $key, $m)) {
-                $tech  = $m[1];
-                $qText = trim($kqData[$key . '_text'] ?? '');
-                $label = $qText ? '"' . $qText . '"' : 'custom question';
-                if ($val === 'partial') $byTech[$tech]['partial'][] = $label;
-                if ($val === 'no')      $byTech[$tech]['no'][]      = $label;
-            }
-        }
-        foreach ($byTech as $tech => $issues) {
-            $label = $kqLabels[$tech] ?? $tech;
-            $parts = [];
-            if (!empty($issues['partial'])) $parts[] = 'partial: ' . implode(', ', $issues['partial']);
-            if (!empty($issues['no']))      $parts[] = 'could not answer: ' . implode(', ', $issues['no']);
-            if ($parts) $kqConcerns[] = $label . ' - ' . implode('; ', $parts);
-        }
+    $kqData    = $r['kq'] ?? [];
+    $kqLabels  = array_map(fn($g) => $g['label'], KNOWLEDGE_QUESTIONS);
+    $noItems   = [];
+    $partItems = [];
+
+    foreach ($kqData as $key => $val) {
+        if (str_ends_with($key, '_text')) continue;
+        if ($val !== 'partial' && $val !== 'no') continue;
+        $item = resolveKqItem($key, $kqData, $kqLabels);
+        if (!$item) continue;
+        $entry = $verboseQA ? ($item['verbose'] ?? $item['short']) : $item['short'];
+        if ($val === 'no')      $noItems[]   = $entry;
+        if ($val === 'partial') $partItems[] = $entry;
     }
-    $kq_section = $kqConcerns
-        ? 'Knowledge check concerns: ' . implode('. ', $kqConcerns) . '.'
+
+    $kqParts = [];
+    if ($noItems)   $kqParts[] = 'Could not answer: '               . implode(', ', $noItems)   . '.';
+    if ($partItems) $kqParts[] = 'Could only give partial answer: ' . implode(', ', $partItems) . '.';
+
+    $kq_section = $kqParts
+        ? 'Knowledge check concerns: ' . implode(' ', $kqParts)
         : ($kqData ? 'Knowledge check: no concerns noted.' : '');
 
     $passMark   = PASS_MARK;
@@ -219,7 +253,7 @@ function buildFeedbackComment(array $r): string {
         if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
         $max      = round(($weights[$key] ?? 0) * 100);
         $mark     = getCriterionMark($r, $key);
-        $feedback = getCriterionFeedback($r, $key);
+        $feedback = getCriterionFeedback($r, $key, $verboseQA);
         $criteriaLines[] = '';
         $criteriaLines[] = "{$label} ({$max}%): {$mark}/{$max}";
         if ($feedback !== '') $criteriaLines[] = $feedback;
