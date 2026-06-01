@@ -16,8 +16,8 @@ $preloadMatric = preg_replace('/[^a-zA-Z0-9]/', '', $_GET['matric'] ?? '');
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= MODULE_ID ?> - Demo Marking Sheet</title>
-<link rel="stylesheet" href="static/marking.css?date=4May2026   ">
-<link rel="stylesheet" href="static/demo.css?date=4May2026">
+<link rel="stylesheet" href="static/marking.css?date=31May2026   ">
+<link rel="stylesheet" href="static/demo.css?date=31May2026">
 <script src="static/matric-autocomplete.js"></script>
 </head>
 <body>

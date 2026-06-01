@@ -29,7 +29,7 @@ if (isset($_GET['download'])) {
 
     // Write header: preserve marksheet columns, append extra marking columns
     if ($msHeader) {
-        fputcsv($out, array_merge($msHeader, ['Duration', 'Misconduct rationale']));
+        fputcsv($out, array_merge($msHeader, ['Duration', 'Misconduct rationale']), escape: '\\');
     } else {
         fputcsv($out, [
             'Identifier','Full name','Email address','Username',
@@ -37,7 +37,7 @@ if (isset($_GET['download'])) {
             'Grade can be changed','Last modified (submission)',
             'Last modified (grade)','Feedback comments',
             'Duration','Misconduct rationale',
-        ]);
+        ], escape: '\\');
     }
 
     // Index marking records by matric
@@ -80,7 +80,7 @@ if (isset($_GET['download'])) {
                 $row[] = '';  // Duration
                 $row[] = '';  // Misconduct rationale
             }
-            fputcsv($out, $row);
+            fputcsv($out, $row, escape: '\\');
         }
     }
 
@@ -108,7 +108,7 @@ if (isset($_GET['download'])) {
             buildFeedbackComment($r),
             format_duration(isset($r['demo_duration']) ? (int)$r['demo_duration'] : null),
             ($r['authorship'] ?? 'pass') === 'fail' ? trim($r['misconduct_comment'] ?? '') : '',
-        ]);
+        ], escape: '\\');
     }
 
     fclose($out);
@@ -153,7 +153,7 @@ $passCount = count(array_filter($records, function($r) use ($passMark) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= MODULE_ID ?> - Export Marks</title>
-<link rel="stylesheet" href="static/marking.css">
+<link rel="stylesheet" href="static/marking.css?date=31May26">
 <link rel="stylesheet" href="static/export.css">
 </head>
 <body>

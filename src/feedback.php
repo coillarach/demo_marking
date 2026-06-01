@@ -234,7 +234,12 @@ function buildFeedbackComment(array $r): string {
             '',
             ...(hasReport() ? [
                 "Critical Report ({$reportMax}%): {$reportM}/{$reportMax}",
-                trim($r['report_comment'] ?? '') ?: 'Report not yet marked.',
+                trim($r['report_comment'] ?? '') ?: (
+                    (file_exists(SUBMISSIONS_DIR . ($r['matric'] ?? '') . '.html') ||
+                     file_exists(SUBMISSIONS_DIR . ($r['matric'] ?? '') . '.pdf'))
+                    ? 'Report not yet marked.'
+                    : 'Report not submitted.'
+                ),
             ] : []),
             '',
             "Overall: {$total}/100 - {$passStatus} (pass mark: {$passMark}%)",
