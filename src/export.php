@@ -8,12 +8,13 @@ function format_duration(?int $secs): string {
 }
 
 // ─── Load all records ─────────────────────────────────────────────
-$records = [];
-foreach (glob(DATA_DIR . '*.json') as $file) {
-    $rec = json_decode(file_get_contents($file), true);
-    if ($rec) $records[] = $rec;
-}
-usort($records, fn($a,$b) => strcmp($a['matric'] ?? '', $b['matric'] ?? ''));
+$records = glob_json_records(DATA_DIR);
+
+// ─── Load marksheet (shared by download and dashboard) ────────────
+$marksheet = readMarksheetData();
+$msHeader  = $marksheet['header'];
+$msRows    = $marksheet['rows'];
+$msCol     = $marksheet['col'];
 
 // ─── Handle CSV download ──────────────────────────────────────────
 if (isset($_GET['download'])) {
@@ -23,11 +24,6 @@ if (isset($_GET['download'])) {
     header('Content-Disposition: attachment; filename="' . MODULE_ID . '_marks_' . date('Y-m-d') . '.csv"');
 
     $out = fopen('php://output', 'w');
-
-    $marksheet    = readMarksheetData();
-    $msHeader     = $marksheet['header'];
-    $msRows       = $marksheet['rows'];
-    $msCol        = $marksheet['col'];
 
     // Write header: preserve marksheet columns, append extra marking columns
     if ($msHeader) {
@@ -48,11 +44,8 @@ if (isset($_GET['download'])) {
         $recordMap[$r['matric'] ?? ''] = $r;
     }
 
-    $written = [];
-
-    // ── Pass 1: iterate marksheet rows in original order ─────────────
+    // ── Iterate marksheet rows in original order ──────────────────────
     foreach ($msRows as $matric => $origRow) {
-        $written[] = $matric;
         $r = $recordMap[$matric] ?? null;
 
         if ($msHeader) {
@@ -86,38 +79,15 @@ if (isset($_GET['download'])) {
         }
     }
 
-    // ── Pass 2: marked students not in the marksheet (fallback) ──────
-    foreach ($records as $r) {
-        $matric = $r['matric'] ?? '';
-        if (in_array($matric, $written, true)) continue;
-
-        $reportM = hasReport() ? floatval($r['report_mark'] ?? 0) : 0.0;
-        $sessionTotal = 0.0;
-        foreach (DEMO_CRITERIA_LABELS as $key => $_) {
-            if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
-            $sessionTotal += getCriterionMark($r, $key);
-        }
-        $total    = round($sessionTotal + $reportM, 1);
-        $complete = !empty($r['complete']) && (!hasReport() || array_key_exists('report_mark', $r));
-        $state    = $complete ? 'Marking completed' : 'In marking';
-        $grade    = ($r['authorship'] ?? 'pass') === 'fail' ? '' : $total;
-
-        fputcsv($out, [
-            'Participant ' . $matric,
-            '', '', $matric, '',
-            $grade, '100.00', $state, 'Yes', '',
-            date('d/m/Y H:i'),
-            buildFeedbackComment($r, $verboseQA),
-            format_duration(isset($r['demo_duration']) ? (int)$r['demo_duration'] : null),
-            ($r['authorship'] ?? 'pass') === 'fail' ? trim($r['misconduct_comment'] ?? '') : '',
-        ], escape: '\\');
-    }
-
     fclose($out);
     exit;
 }
 
 // ─── Dashboard view ───────────────────────────────────────────────
+
+// Students with marking records not present in the marksheet
+$orphanRecords = find_orphan_records($records, $msRows);
+
 $completeCount = count(array_filter($records, function($r) {
     if (!hasReport()) return !empty($r['complete']);
     return !empty($r['complete']) && array_key_exists('report_mark', $r);
@@ -126,13 +96,11 @@ $authFailCount = count(array_filter($records, fn($r) => ($r['authorship'] ?? '')
 $noReportCount = count(array_filter($records, function($r) {
     if (!hasReport()) return false;
     $m = $r['matric'] ?? '';
-    return !array_key_exists('report_mark', $r)
-        && (file_exists(SUBMISSIONS_DIR . $m . '.html') || file_exists(SUBMISSIONS_DIR . $m . '.pdf'));
+    return !array_key_exists('report_mark', $r) && has_submission_file(SUBMISSIONS_DIR, $m);
 }));
 $noSubmissionCount = count(array_filter($records, function($r) {
     if (!hasReport()) return false;
-    $m = $r['matric'] ?? '';
-    return !file_exists(SUBMISSIONS_DIR . $m . '.html') && !file_exists(SUBMISSIONS_DIR . $m . '.pdf');
+    return !has_submission_file(SUBMISSIONS_DIR, $r['matric'] ?? '');
 }));
 $passMark  = PASS_MARK;
 $passCount = count(array_filter($records, function($r) use ($passMark) {
@@ -159,10 +127,14 @@ $passCount = count(array_filter($records, function($r) use ($passMark) {
 <link rel="stylesheet" href="static/export.css">
 </head>
 <body>
-<div class="page-header">
-  <h1><?= MODULE_ID ?> - Marks Export</h1>
-  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <a href="demo.php">Demo form</a> &nbsp;|&nbsp; <?php if (hasReport()): ?><a href="report.php">Report form</a> &nbsp;|&nbsp; <?php endif; ?><a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
-</div>
+<?php
+$navLinks = [['label' => 'Demo form', 'href' => 'demo.php']];
+if (hasReport()) $navLinks[] = ['label' => 'Report form', 'href' => 'report.php'];
+$navLinks[] = ['label' => 'Configure', 'href' => 'configure.php'];
+if (defined('ADMIN_URL')) $navLinks[] = ['label' => 'Documentation', 'href' => ADMIN_URL . '/docs.php', 'external' => true];
+$navLinks[] = ['label' => 'Sign out', 'href' => 'logout.php'];
+render_page_header(MODULE_ID . ' - Marks Export', $navLinks, $currentMarkerName);
+?>
 <main>
 
 <div class="card">
@@ -191,6 +163,24 @@ $passCount = count(array_filter($records, function($r) use ($passMark) {
     <button type="submit" class="btn-primary">Download Moodle CSV</button>
   </form>
 </div>
+
+<?php if ($orphanRecords): ?>
+<div class="card">
+  <div class="alert alert-warning">
+    <strong><?= count($orphanRecords) ?> student record<?= count($orphanRecords) !== 1 ? 's' : '' ?> not in Moodle marksheet — excluded from CSV export</strong>
+    <p style="margin:.5rem 0 .4rem;">The following students have marking records but do not appear in the downloaded Moodle marksheet. They cannot be imported into Moodle and have been omitted from the CSV file.</p>
+    <ul style="margin:.25rem 0 .5rem;padding-left:1.25rem;">
+      <?php foreach ($orphanRecords as $or):
+            $orMatric = htmlspecialchars($or['matric'] ?? '');
+            $orMarker = htmlspecialchars($or['marker'] ?? 'unknown');
+            $orTier   = htmlspecialchars($or['tier']   ?? '-'); ?>
+      <li>Matric: <strong><?= $orMatric ?></strong> — marked by <?= $orMarker ?> (tier: <?= $orTier ?>)</li>
+      <?php endforeach; ?>
+    </ul>
+    <p>Possible cause: the student's Moodle record may be suspended (e.g. due to non-payment of fees), which removes them from the module enrolment list. Once the issue is resolved in Moodle, download a fresh marksheet and re-upload it here before exporting again.</p>
+  </div>
+</div>
+<?php endif; ?>
 
 <?php if ($records): ?>
 <div class="card">
@@ -229,9 +219,7 @@ $passCount = count(array_filter($records, function($r) use ($passMark) {
             ? '<span class="badge badge-fail">Misconduct Referral</span>'
             : '<span class="badge badge-pass">Confirmed</span>';
         $isReportMarked = !hasReport() || array_key_exists('report_mark', $r);
-        $hasSubmission  = hasReport()
-            && (file_exists(SUBMISSIONS_DIR . ($r['matric'] ?? '') . '.html')
-             || file_exists(SUBMISSIONS_DIR . ($r['matric'] ?? '') . '.pdf'));
+        $hasSubmission  = hasReport() && has_submission_file(SUBMISSIONS_DIR, $r['matric'] ?? '');
         $status = $isReferral
             ? '<span class="badge badge-fail">Referred</span>'
             : (($hasSubmission && !$isReportMarked)

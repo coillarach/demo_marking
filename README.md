@@ -27,3 +27,18 @@ directories are untouched (the script only creates them if absent, never deletes
 
 After a config-only change (e.g. updating passwords or adding a feature):                                                              
 Re-run deploy for that module only; the other module's live directory is unaffected.
+
+# Server requirements for uploading submissions
+
+Bulk submission zips (Moodle's "Download all submissions") can easily exceed PHP's default
+upload limits for a full-size cohort — e.g. ~120 students with PDF reports can be over 1GB.
+On the server hosting the admin tool (`admin/submissions.php`), set in `php.ini`:
+
+- `upload_max_filesize` — at least as large as the biggest zip you'll upload (e.g. `2000M`)
+- `post_max_size` — must be *larger* than `upload_max_filesize` (e.g. `2048M`)
+- `memory_limit` — comfortably above `upload_max_filesize` (e.g. `512M`)
+
+If the upload is rejected before PHP even runs (a raw web-server error page rather than one from
+this app), also check the web server's own request body limit (e.g. Apache's `LimitRequestBody`,
+nginx's `client_max_body_size`) and raise or remove it. With mod_php, changing `php.ini` requires
+restarting Apache to take effect.

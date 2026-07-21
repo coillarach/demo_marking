@@ -50,7 +50,7 @@ usort($modules, fn($a, $b) => strcmp($a['id'], $b['id']));
 <body>
 <div class="home-wrap">
   <p class="home-title">Demo Marking Tool</p>
-  <p class="home-sub">Select your role to sign in.</p>
+  <p class="home-sub">Select your role to sign in. <a href="docs.php">Documentation</a></p>
 
   <p class="home-section-label">Module Marking</p>
   <div class="module-list">

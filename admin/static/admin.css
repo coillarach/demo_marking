@@ -123,6 +123,11 @@ details.accordion-item[open] > summary .summary-arrow { transform: rotate(90deg)
 .help-box strong { font-weight: 600; }
 .help-box code { background: #e0f2fe; border-radius: 3px; padding: .05rem .3rem; font-size: .8rem; }
 
+/* Status badges */
+.badge      { font-size: .7rem; padding: .1rem .35rem; border-radius: 3px; color: #fff; font-weight: 600; }
+.badge-fail { background: #ef4444; }
+.badge-pass { background: #10b981; }
+
 /* Login page */
 .login-wrap { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
 .login-card  { background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,.12); padding: 2rem; width: 100%; max-width: 360px; }

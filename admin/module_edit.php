@@ -107,18 +107,16 @@ function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES); }
 <link rel="stylesheet" href="static/admin.css">
 </head>
 <body>
-<div class="page-header">
-  <h1><?= h($currentModuleId) ?> — Module Configuration</h1>
-  <span>
-    <span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= h($currentMarkerName) ?></span>
-    <?php if ($moduleReturnUrl !== ''): ?>
-    &nbsp;|&nbsp; <a href="<?= htmlspecialchars($moduleReturnUrl) ?>">Return to marking</a>
-    <?php endif; ?>
-    &nbsp;|&nbsp; <a href="students.php">Students</a>
-    &nbsp;|&nbsp; <a href="change_password.php">Change password</a>
-    &nbsp;|&nbsp; <a href="module_logout.php">Sign out</a>
-  </span>
-</div>
+<?php
+$navLinks = [];
+if ($moduleReturnUrl !== '') $navLinks[] = ['label' => 'Return to marking', 'href' => $moduleReturnUrl];
+$navLinks[] = ['label' => 'Students',        'href' => 'students.php'];
+$navLinks[] = ['label' => 'Submissions',     'href' => 'submissions.php'];
+$navLinks[] = ['label' => 'Documentation',   'href' => 'docs.php'];
+$navLinks[] = ['label' => 'Change password', 'href' => 'change_password.php'];
+$navLinks[] = ['label' => 'Sign out',        'href' => 'module_logout.php'];
+render_page_header($currentModuleId . ' — Module Configuration', $navLinks, $currentMarkerName);
+?>
 <main class="wide">
 
 <?php if ($saved): ?>

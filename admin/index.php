@@ -22,13 +22,12 @@ $deployTargets = load_deploy_targets();
 <link rel="stylesheet" href="static/admin.css">
 </head>
 <body>
-<div class="page-header">
-  <h1>Marking Tool — Global Admin</h1>
-  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentAdminUser) ?></span>
-    &nbsp;|&nbsp; <a href="module_login.php">Module editor</a>
-    &nbsp;|&nbsp; <a href="admin_password.php">Change password</a>
-    &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
-</div>
+<?php render_page_header('Marking Tool — Global Admin', [
+    ['label' => 'Module editor',    'href' => 'module_login.php'],
+    ['label' => 'Documentation',    'href' => 'docs.php'],
+    ['label' => 'Change password',  'href' => 'admin_password.php'],
+    ['label' => 'Sign out',         'href' => 'logout.php'],
+], $currentAdminUser); ?>
 <main>
 
 <div class="card">

@@ -1,2 +1,3 @@
 admin/config.php
 configs/deploy_targets.json
+.idea/

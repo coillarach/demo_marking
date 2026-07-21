@@ -50,10 +50,16 @@ $navNext  = ($navIdx !== false && $navIdx < $navTotal - 1) ? $matricList[$navIdx
 <script src="static/matric-autocomplete.js"></script>
 </head>
 <body>
-<div class="page-header">
-  <h1><?= MODULE_ID ?> - Report Marking</h1>
-  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <a href="demo.php">Demo form</a> &nbsp;|&nbsp; <a href="export.php">Export CSV</a> &nbsp;|&nbsp; <a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
-</div>
+<?php
+$navLinks = [
+    ['label' => 'Demo form',  'href' => 'demo.php'],
+    ['label' => 'Export CSV', 'href' => 'export.php'],
+    ['label' => 'Configure',  'href' => 'configure.php'],
+];
+if (defined('ADMIN_URL')) $navLinks[] = ['label' => 'Documentation', 'href' => ADMIN_URL . '/docs.php', 'external' => true];
+$navLinks[] = ['label' => 'Sign out', 'href' => 'logout.php'];
+render_page_header(MODULE_ID . ' - Report Marking', $navLinks, $currentMarkerName);
+?>
 <?php if (!$studentsFileReady): ?>
 <div style="padding:0 1rem .5rem;">
   <div class="alert alert-warning">

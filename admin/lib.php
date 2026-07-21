@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/../src/lib/records.php';
+require_once __DIR__ . '/../src/lib/layout.php';
+
 if (!function_exists('array_is_list')) {
     function array_is_list(array $a): bool {
         return $a === [] || array_keys($a) === range(0, count($a) - 1);
@@ -179,4 +182,119 @@ function sync_deployed_config(string $moduleId, string $content): void {
 
     file_put_contents($deployedConfig, $content . $urlLines, LOCK_EX);
     if (function_exists('opcache_invalidate')) opcache_invalidate($deployedConfig, true);
+}
+
+// ─── Data archiving ──────────────────────────────────────────────────
+
+function is_valid_archive_id(string $id): bool {
+    return (bool)preg_match('/^\d{4}-\d{2}-\d{2}_\d{6}$/', $id);
+}
+
+function is_valid_batch_id(string $id): bool {
+    return (bool)preg_match('/^\d{4}-\d{2}-\d{2}_\d{6}-[0-9a-f]{6}$/', $id);
+}
+
+/** Parses a php.ini size shorthand (e.g. "2048M", "1G") into bytes. */
+function ini_bytes(string $val): int {
+    $val = trim($val);
+    if ($val === '') return 0;
+    $unit = strtolower(substr($val, -1));
+    $num  = (float)$val;
+    return match ($unit) {
+        'g' => (int)($num * 1024 * 1024 * 1024),
+        'm' => (int)($num * 1024 * 1024),
+        'k' => (int)($num * 1024),
+        default => (int)$val,
+    };
+}
+
+/** True if a POST request arrived with an empty $_POST/$_FILES because its
+ *  body exceeded post_max_size — PHP silently discards both in that case,
+ *  so this is the standard way to detect it and give an accurate error
+ *  instead of it being misread as a CSRF failure or "no file uploaded". */
+function post_size_exceeded(): ?string {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !empty($_POST) || !empty($_FILES)) return null;
+    $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+    $postMax       = ini_bytes(ini_get('post_max_size') ?: '0');
+    if ($contentLength > 0 && $postMax > 0 && $contentLength > $postMax) {
+        return sprintf(
+            'The upload (%.0f MB) exceeds this server\'s request size limit (post_max_size = %s). ' .
+            'Ask whoever administers the server to raise post_max_size and upload_max_filesize in php.ini ' .
+            '(and any web-server-level request body limit) to comfortably cover your largest file, then try again.',
+            $contentLength / 1024 / 1024,
+            ini_get('post_max_size')
+        );
+    }
+    return null;
+}
+
+/**
+ * Moves a deployed module's current data/ and submissions/ directories into
+ * a timestamped archive folder, then recreates empty data/ and submissions/
+ * so marking can resume immediately for a new cohort. Nothing is deleted —
+ * everything that was there is preserved, inspectable via list_archives().
+ */
+function create_archive(string $deployTarget, string $moduleId, string $archivedBy): array {
+    $dataDir = $deployTarget . '/data';
+    $hasCsv  = file_exists($dataDir . '/students.csv');
+    $hasJson = (bool)(glob($dataDir . '/*.json') ?: []);
+    if (!$hasCsv && !$hasJson) {
+        return ['ok' => false, 'error' => 'There is no current data to archive.'];
+    }
+
+    $archiveId  = date('Y-m-d_His');
+    $archiveDir = $deployTarget . '/archives/' . $archiveId;
+    if (!mkdir($archiveDir, 0755, true) && !is_dir($archiveDir)) {
+        return ['ok' => false, 'error' => 'Could not create archive directory.'];
+    }
+
+    if (is_dir($dataDir) && !rename($dataDir, $archiveDir . '/data')) {
+        return ['ok' => false, 'error' => 'Could not move data/ into the archive.'];
+    }
+    $submissionsDir = $deployTarget . '/submissions';
+    if (is_dir($submissionsDir) && !rename($submissionsDir, $archiveDir . '/submissions')) {
+        return ['ok' => false, 'error' => 'Could not move submissions/ into the archive.'];
+    }
+
+    foreach (['data', 'submissions'] as $sub) {
+        $path = $deployTarget . '/' . $sub;
+        if (!is_dir($path)) mkdir($path, 0755, true);
+    }
+
+    $studentCount = count(read_marksheet_matrics($archiveDir . '/data/students.csv'));
+    if ($studentCount === 0) {
+        $studentCount = count(glob($archiveDir . '/data/*.json') ?: []);
+    }
+
+    $meta = [
+        'module_id'     => $moduleId,
+        'archived_at'   => date('c'),
+        'archived_by'   => $archivedBy,
+        'student_count' => $studentCount,
+    ];
+    file_put_contents($archiveDir . '/meta.json', json_encode($meta, JSON_PRETTY_PRINT), LOCK_EX);
+
+    return ['ok' => true, 'archive_id' => $archiveId, 'student_count' => $studentCount];
+}
+
+function list_archives(string $deployTarget): array {
+    $dirs = glob($deployTarget . '/archives/*', GLOB_ONLYDIR) ?: [];
+    $archives = [];
+    foreach ($dirs as $dir) {
+        $id = basename($dir);
+        if (!is_valid_archive_id($id)) continue;
+        $meta = [];
+        $metaFile = $dir . '/meta.json';
+        if (file_exists($metaFile)) {
+            $meta = json_decode(file_get_contents($metaFile), true) ?: [];
+        }
+        $archives[] = [
+            'id'            => $id,
+            'archived_at'   => $meta['archived_at']   ?? '',
+            'archived_by'   => $meta['archived_by']   ?? '',
+            'student_count' => $meta['student_count'] ?? count(glob($dir . '/data/*.json') ?: []),
+        ];
+    }
+    usort($archives, fn($a, $b) => strcmp($b['id'], $a['id']));
+    return $archives;
 }

@@ -248,37 +248,41 @@ function buildFeedbackComment(array $r, bool $verboseQA = false): string {
     $passMark   = PASS_MARK;
     $passStatus = ($total >= $passMark) ? 'PASS' : 'FAIL';
 
-    $criteriaLines = [];
+    // HTML output — single line, no literal newlines, all text escaped
+    $esc = fn(string $s): string =>
+        str_replace(["\r\n", "\r", "\n"], '<br>',
+            htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+
+    $blocks   = [];
+    $blocks[] = '<p>' . $esc($auth_line) . '</p>';
+    if ($authorship === 'fail') {
+        $blocks[] = '<p>' . $esc('No mark has been submitted pending the outcome of the academic misconduct investigation.') . '</p>';
+    }
+    if ($kq_section !== '') {
+        $blocks[] = '<p>' . $esc($kq_section) . '</p>';
+    }
+
     foreach (DEMO_CRITERIA_LABELS as $key => $label) {
         if ($key === 'design' && empty(DESIGN_CRITERIA)) continue;
         $max      = round(($weights[$key] ?? 0) * 100);
         $mark     = getCriterionMark($r, $key);
         $feedback = getCriterionFeedback($r, $key, $verboseQA);
-        $criteriaLines[] = '';
-        $criteriaLines[] = "{$label} ({$max}%): {$mark}/{$max}";
-        if ($feedback !== '') $criteriaLines[] = $feedback;
+        $block    = '<p><strong>' . $esc("{$label} ({$max}%): {$mark}/{$max}") . '</strong>';
+        if ($feedback !== '') $block .= '<br>' . $esc($feedback);
+        $blocks[] = $block . '</p>';
     }
 
-    $lines = array_merge(
-        [$auth_line],
-        $authorship === 'fail' ? ['No mark has been submitted pending the outcome of the academic misconduct investigation.'] : [],
-        [$kq_section],
-        $criteriaLines,
-        [
-            '',
-            ...(hasReport() ? [
-                "Critical Report ({$reportMax}%): {$reportM}/{$reportMax}",
-                trim($r['report_comment'] ?? '') ?: (
-                    (file_exists(SUBMISSIONS_DIR . ($r['matric'] ?? '') . '.html') ||
-                     file_exists(SUBMISSIONS_DIR . ($r['matric'] ?? '') . '.pdf'))
-                    ? 'Report not yet marked.'
-                    : 'Report not submitted.'
-                ),
-            ] : []),
-            '',
-            "Overall: {$total}/100 - {$passStatus} (pass mark: {$passMark}%)",
-        ]
-    );
+    if (hasReport()) {
+        $rComment = trim($r['report_comment'] ?? '') ?: (
+            has_submission_file(SUBMISSIONS_DIR, $r['matric'] ?? '')
+            ? 'Report not yet marked.'
+            : 'Report not submitted.'
+        );
+        $blocks[] = '<p><strong>' . $esc("Critical Report ({$reportMax}%): {$reportM}/{$reportMax}") . '</strong>'
+                  . '<br>' . $esc($rComment) . '</p>';
+    }
 
-    return implode("\n", $lines);
+    $blocks[] = '<p><strong>' . $esc("Overall: {$total}/100 - {$passStatus} (pass mark: {$passMark}%)") . '</strong></p>';
+
+    return implode('', $blocks);
 }

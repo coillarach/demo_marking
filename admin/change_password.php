@@ -77,17 +77,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <link rel="stylesheet" href="static/admin.css">
 </head>
 <body>
-<div class="page-header">
-  <h1><?= htmlspecialchars($currentModuleId) ?> — Change Password</h1>
-  <span>
-    <span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span>
-    <?php if ($moduleReturnUrl !== ''): ?>
-    &nbsp;|&nbsp; <a href="<?= htmlspecialchars($moduleReturnUrl) ?>">Return to marking</a>
-    <?php endif; ?>
-    &nbsp;|&nbsp; <a href="module_edit.php">Configuration</a>
-    &nbsp;|&nbsp; <a href="module_logout.php">Sign out</a>
-  </span>
-</div>
+<?php
+$navLinks = [];
+if ($moduleReturnUrl !== '') $navLinks[] = ['label' => 'Return to marking', 'href' => $moduleReturnUrl];
+$navLinks[] = ['label' => 'Configuration', 'href' => 'module_edit.php'];
+$navLinks[] = ['label' => 'Sign out',      'href' => 'module_logout.php'];
+render_page_header($currentModuleId . ' — Change Password', $navLinks, $currentMarkerName);
+?>
 <main>
 
 <?php if ($success): ?>

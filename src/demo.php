@@ -22,10 +22,15 @@ $preloadMatric = preg_replace('/[^a-zA-Z0-9]/', '', $_GET['matric'] ?? '');
 </head>
 <body>
 
-<div class="page-header">
-  <h1><?= MODULE_ID ?> - Demo Marking</h1>
-  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentMarkerName) ?></span> &nbsp;|&nbsp; <?php if (hasReport()): ?><a href="report.php">Report form</a> &nbsp;|&nbsp; <?php endif; ?><a href="export.php">Export CSV</a> &nbsp;|&nbsp; <a href="configure.php">Configure</a> &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
-</div>
+<?php
+$navLinks = [];
+if (hasReport()) $navLinks[] = ['label' => 'Report form', 'href' => 'report.php'];
+$navLinks[] = ['label' => 'Export CSV', 'href' => 'export.php'];
+$navLinks[] = ['label' => 'Configure', 'href' => 'configure.php'];
+if (defined('ADMIN_URL')) $navLinks[] = ['label' => 'Documentation', 'href' => ADMIN_URL . '/docs.php', 'external' => true];
+$navLinks[] = ['label' => 'Sign out', 'href' => 'logout.php'];
+render_page_header(MODULE_ID . ' - Demo Marking', $navLinks, $currentMarkerName);
+?>
 
 <main>
 

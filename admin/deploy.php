@@ -141,12 +141,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <link rel="stylesheet" href="static/admin.css">
 </head>
 <body>
-<div class="page-header">
-  <h1>Deploy — <?= htmlspecialchars($meta['MODULE_ID'] ?: $configParam) ?></h1>
-  <span><span style="color:rgba(255,255,255,.6);font-size:.8rem;"><?= htmlspecialchars($currentAdminUser) ?></span>
-    &nbsp;|&nbsp; <a href="index.php">Dashboard</a>
-    &nbsp;|&nbsp; <a href="logout.php">Sign out</a></span>
-</div>
+<?php render_page_header('Deploy — ' . ($meta['MODULE_ID'] ?: $configParam), [
+    ['label' => 'Dashboard',     'href' => 'index.php'],
+    ['label' => 'Documentation', 'href' => 'docs.php'],
+    ['label' => 'Sign out',      'href' => 'logout.php'],
+], $currentAdminUser); ?>
 <main>
 
 <?php if ($result !== null): ?>
