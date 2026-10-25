@@ -8,6 +8,11 @@ $designMax  = $seMode ? 0 : round(MARK_WEIGHTS['design'] * 100);
 $demoMax    = $seMode ? round(MARK_WEIGHTS['communication'] * 100) : round(MARK_WEIGHTS['demo'] * 100);
 $reportMax  = round((MARK_WEIGHTS['report'] ?? (hasReport() ? REPORT_WEIGHT : 0)) * 100);
 $sessionMax    = $seMode ? 100 : ($techMax + $designMax + $demoMax);
+// A module that doesn't score demonstration quality (weight 0) hides that section.
+// The elements stay in the DOM because the page script reads them.
+$hideDemoSection = !$seMode && $demoMax == 0;
+// Minutes of Q&A left once the presentation phase ends (TIMER_BREAK seconds remain)
+$qaMins = (int)round(TIMER_BREAK / 60);
 $preloadMatric = preg_replace('/[^a-zA-Z0-9]/', '', $_GET['matric'] ?? '');
 ?>
 <!DOCTYPE html>
@@ -63,14 +68,14 @@ render_page_header(MODULE_ID . ' - Demo Marking', $navLinks, $currentMarkerName)
   <?php $presMins = round((TIMER_TOTAL - TIMER_BREAK) / 60); ?>
   <h2><span class="step">1</span> Presentation (first <?= $presMins ?> minute<?= $presMins !== 1 ? 's' : '' ?> - observe)</h2>
   <div class="field">
-    <label>Software running and set up before demo started</label>
+    <label><?= htmlspecialchars(ui_text('setup_label')) ?></label>
     <div class="radio-group">
       <label><input type="radio" name="setup_ready" value="yes"> Yes</label>
       <label><input type="radio" name="setup_ready" value="no"> No - had to wait</label>
     </div>
   </div>
   <div class="field">
-    <label>Student presented their features without excessive prompting</label>
+    <label><?= htmlspecialchars(ui_text('presented_label')) ?></label>
     <div class="radio-group">
       <label><input type="radio" name="presented_clearly" value="yes"> Yes</label>
       <label><input type="radio" name="presented_clearly" value="partial"> Partial - needed prompting</label>
@@ -81,8 +86,8 @@ render_page_header(MODULE_ID . ' - Demo Marking', $navLinks, $currentMarkerName)
 
 <!-- ── Section 2: Features Present ───────────────────────────────── -->
 <div class="card">
-  <h2><span class="step">2</span> Features Present <small style="font-weight:400;font-size:.8rem;color:#64748b;">(tick what you can see working)</small></h2>
-  <p style="font-size:.8rem;color:#64748b;margin-bottom:.75rem;">This determines the enhancement tier and drives the Q&amp;A questions below.</p>
+  <h2><span class="step">2</span> <?= htmlspecialchars(ui_text('features_heading')) ?> <small style="font-weight:400;font-size:.8rem;color:#64748b;"><?= htmlspecialchars(ui_text('features_hint')) ?></small></h2>
+  <p style="font-size:.8rem;color:#64748b;margin-bottom:.75rem;"><?= htmlspecialchars(ui_text('features_intro')) ?></p>
 
   <div class="feature-grid" id="feature-grid">
     <?php foreach (QUESTIONS as $slug => $feature): ?>
@@ -122,7 +127,7 @@ render_page_header(MODULE_ID . ' - Demo Marking', $navLinks, $currentMarkerName)
 <?php endif; ?>
 
 <!-- ── Section 4: Knowledge Check ────────────────────────────────── -->
-<div class="card" id="card-kq">
+<div class="card" id="card-kq"<?= empty(KNOWLEDGE_QUESTIONS) ? ' style="display:none"' : '' ?>>
   <h2><span class="step">4</span> Knowledge Check <small style="font-weight:400;font-size:.8rem;color:#64748b;">(expand highlighted categories to ask at least one question)</small></h2>
   <p style="font-size:.8rem;color:#64748b;margin-bottom:.9rem;">
     Expand a technology section and select questions to ask. Categories marked <strong>Required</strong> must have at least one question answered before saving. The student's responses will be included in the feedback comment.
@@ -155,7 +160,7 @@ render_page_header(MODULE_ID . ' - Demo Marking', $navLinks, $currentMarkerName)
 
 <!-- ── Section 5: Q&A ─────────────────────────────────────────────── -->
 <div class="card">
-  <h2><span class="step">5</span> Q&amp;A (last 3 minutes)</h2>
+  <h2><span class="step">5</span> Q&amp;A (last <?= $qaMins ?> minute<?= $qaMins !== 1 ? 's' : '' ?>)</h2>
   <p style="font-size:.8rem;color:#64748b;margin-bottom:1rem;">
     Questions are shown for ticked features. Higher-tier features are shown first. Lower-tier sections are marked <em>cursory</em> when a higher tier is present - a brief check is sufficient.
   </p>
@@ -166,7 +171,7 @@ render_page_header(MODULE_ID . ' - Demo Marking', $navLinks, $currentMarkerName)
 
 <!-- ── Section 6: Technical Mark ──────────────────────────────────── -->
 <div class="card">
-  <h2><span class="step">6</span> <?php if ($seMode): ?>Understanding of Code<?php else: ?>Technical Implementation Mark<?php endif; ?> <small style="font-weight:400;font-size:.8rem;color:#64748b;">(<?= $techMax ?>% of total)</small></h2>
+  <h2><span class="step">6</span> <?php if ($seMode): ?>Understanding of Code<?php else: ?><?= htmlspecialchars(ui_text('tech_heading')) ?><?php endif; ?> <small style="font-weight:400;font-size:.8rem;color:#64748b;">(<?= $techMax ?>% of total)</small></h2>
   <p id="tech-range-hint" style="margin-bottom:.5rem;">Tick features above to see the suggested range.</p>
 
   <!-- Row 1: raw mark entry -->
@@ -200,7 +205,7 @@ render_page_header(MODULE_ID . ' - Demo Marking', $navLinks, $currentMarkerName)
 </div>
 
 <!-- ── Section 7: Demo Quality / Communication ────────────────────── -->
-<div class="card">
+<div class="card"<?= $hideDemoSection ? ' style="display:none"' : '' ?>>
   <h2><span class="step">7</span> <?php if ($seMode): ?>Communication &amp; Presentation<?php else: ?>Demonstration Quality<?php endif; ?> <small style="font-weight:400;font-size:.8rem;color:#64748b;">(<?= $demoMax ?>% of total<?php if (!$seMode): ?> - holistic<?php endif; ?>)</small></h2>
   <div id="presentation-reminder" class="presentation-reminder" style="display:none"></div>
   <?php if ($seMode): ?>
@@ -301,11 +306,11 @@ if (!$seMode): ?>
 <div class="card" id="card-authorship">
   <h2>Authorship Confirmation</h2>
   <p style="font-size:.875rem;color:#475569;margin-bottom:.75rem;">
-    Based on the demonstration and Q&amp;A, confirm whether there is sufficient evidence that the submitted code is the student's own work.
+    Based on the demonstration and Q&amp;A, confirm whether there is sufficient evidence that the <?= htmlspecialchars(ui_text('authorship_subject')) ?> is the student's own work.
   </p>
   <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;">
     <input type="checkbox" id="authorship-fail" style="margin-top:.2rem;width:1.1rem;height:1.1rem;flex-shrink:0;cursor:pointer;">
-    <span><strong>Refer for academic misconduct</strong> - authorship of the submitted code could not be confirmed</span>
+    <span><strong>Refer for academic misconduct</strong> - authorship of the <?= htmlspecialchars(ui_text('authorship_subject')) ?> could not be confirmed</span>
   </label>
   <div id="authorship-warning" class="alert alert-danger" style="display:none;margin-top:.75rem;">
     <strong>Academic Misconduct:</strong> Do not award a mark. Complete the form and submit - a flag will be recorded. Follow the standard referral procedure after the session.
@@ -912,11 +917,6 @@ function computeKQFactors() {
   return factors;
 }
 
-function setText(id, v) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = v;
-}
-
 function updateSummaryTable() {
   const factors     = computeKQFactors();
   const techRaw     = parseInt(document.getElementById('tech-mark').value)  || 0;
@@ -1053,8 +1053,8 @@ function updateDesign() {
     if (sel) total += parseInt(sel.value);
   });
   total = Math.min(Math.round(CONFIG.weights.design * 100), total);
-  document.getElementById('design-total-display').textContent = total;
-  document.getElementById('sum-design').textContent = total;
+  setText('design-total-display', total);
+  setText('sum-design', total);
   updateTotal();
 }
 
@@ -1074,7 +1074,7 @@ demoBandSel.addEventListener('change', () => {
     demoBandMid = null;
     bandDesc.textContent = 'Select a band to see the descriptor.';
     demoMarkDisp.textContent = `0 / ${DEMO_MAX}`;
-    document.getElementById('sum-demo').textContent = '0';
+    setText('sum-demo', '0');
     setCommentRequired('demo-comment-field', 'demo-comment-hint', false);
     updateTotal();
     return;
@@ -1095,17 +1095,24 @@ demoMarkInp.addEventListener('input', updateDemoDisplay);
 function updateDemoDisplay() {
   const v = parseInt(demoMarkInp.value) || 0;
   demoMarkDisp.textContent = `${v} / ${DEMO_MAX}`;
-  document.getElementById('sum-demo').textContent = v;
+  setText('sum-demo', v);
   updateTotal();
   setCommentRequired('demo-comment-field', 'demo-comment-hint', demoBandMid !== null && v !== demoBandMid);
 }
 
 // ─── Running total ────────────────────────────────────────────────
+// Summary tiles exist only for criteria the module scores (see DEMO_CRITERIA_LABELS),
+// so writes go through setText, which tolerates a missing element.
+function setText(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = v;
+}
+
 function updateTotal() {
   if (SE_MODE) { updateSummaryTable(); return; }
   const tech   = parseFloat(document.getElementById('sum-tech').textContent)   || 0;
-  const design = parseFloat(document.getElementById('sum-design').textContent) || 0;
-  const demo   = parseFloat(document.getElementById('sum-demo').textContent)   || 0;
+  const design = parseFloat(document.getElementById('sum-design')?.textContent) || 0;
+  const demo   = parseFloat(document.getElementById('sum-demo')?.textContent)   || 0;
   const sessionMax = Math.round(((CONFIG.weights.tech ?? 0) + (CONFIG.weights.design ?? 0) + (CONFIG.weights.demo ?? 0)) * 100);
   document.getElementById('sum-total').textContent = `${(tech + design + demo).toFixed(1)} / ${sessionMax}`;
 }
@@ -1476,7 +1483,7 @@ function resetForm() {
   updateDesign();
   updateTotal();
   document.getElementById('demo-mark-display').textContent = `0 / ${DEMO_MAX}`;
-  document.getElementById('sum-demo').textContent = '0';
+  setText('sum-demo', '0');
   if (SE_MODE) {
     const oc = document.getElementById('overall_comment');
     if (oc) oc.value = '';

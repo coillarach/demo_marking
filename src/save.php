@@ -63,9 +63,32 @@ $file = DATA_DIR . $matric . '.json';
 
 // If updating report data, merge with existing record
 if ($mode === 'report' && file_exists($file)) {
-    $existing = json_decode(file_get_contents($file), true) ?? [];
-    $data = array_merge($existing, [
-        'report_mark'      => $data['report_mark'] ?? null,
+    $existing    = json_decode(file_get_contents($file), true) ?? [];
+    $reportMark  = $data['report_mark'] ?? null;
+    $reportExtra = [];
+
+    // When the report mark is split across criteria, the per-criterion marks are
+    // authoritative: validate each against its maximum and derive report_mark
+    // from them, so everything downstream can keep reading report_mark alone.
+    $criteria = report_criteria();
+    if ($criteria) {
+        $submitted   = is_array($data['report_marks'] ?? null) ? $data['report_marks'] : [];
+        $reportMarks = [];
+        foreach ($criteria as $critKey => $crit) {
+            $value = $submitted[$critKey] ?? null;
+            if (!is_numeric($value)) {
+                http_response_code(400);
+                echo json_encode(['ok' => false, 'error' => 'A mark is required for: ' . ($crit['label'] ?? $critKey)]);
+                exit;
+            }
+            $reportMarks[$critKey] = round(max(0.0, min(report_criterion_max($crit), (float)$value)), 2);
+        }
+        $reportMark  = round(array_sum($reportMarks), 2);
+        $reportExtra = ['report_marks' => $reportMarks];
+    }
+
+    $data = array_merge($existing, $reportExtra, [
+        'report_mark'      => $reportMark,
         'report_comment'   => $data['report_comment'] ?? '',
         'report_marker'    => $_SESSION['marker_name'] ?? '',
         'report_marker_id' => $_SESSION['marker_id']   ?? '',

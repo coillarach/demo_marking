@@ -182,15 +182,36 @@ foreach (DEMO_CRITERIA_LABELS as $key => $label) {
 </div>
 
 <!-- Report mark entry -->
-<?php $reportMax = round((MARK_WEIGHTS['report'] ?? (defined('REPORT_WEIGHT') ? REPORT_WEIGHT : 0)) * 100); ?>
+<?php
+$reportMax      = round((MARK_WEIGHTS['report'] ?? (defined('REPORT_WEIGHT') ? REPORT_WEIGHT : 0)) * 100);
+$reportCriteria = report_criteria();
+?>
 <div class="card">
-  <h2>Critical Report Mark</h2>
-  <p style="font-size:.8rem;color:#475569;margin-bottom:.9rem;">Max 500 words. The report is <?= $reportMax ?>% of the total module mark.</p>
+  <h2><?= htmlspecialchars(ui_text('report_label')) ?> Mark</h2>
+  <p style="font-size:.8rem;color:#475569;margin-bottom:.9rem;"><?= htmlspecialchars(ui_text('report_note')) ?> The report is <?= $reportMax ?>% of the total module mark.</p>
+  <?php if ($reportCriteria): ?>
+  <?php foreach ($reportCriteria as $critKey => $crit):
+    $critMax = report_criterion_max($crit);
+    $critVal = $record['report_marks'][$critKey] ?? '';
+  ?>
+  <div class="field">
+    <label for="report-mark-<?= htmlspecialchars($critKey) ?>"><?= htmlspecialchars($crit['label'] ?? $critKey) ?> (0–<?= $critMax ?>)</label>
+    <?php if (!empty($crit['description'])): ?>
+    <small style="display:block;font-size:.75rem;color:#64748b;margin-bottom:.25rem;"><?= htmlspecialchars($crit['description']) ?></small>
+    <?php endif; ?>
+    <input type="number" class="report-input" id="report-mark-<?= htmlspecialchars($critKey) ?>"
+           min="0" max="<?= $critMax ?>" step="0.5"
+           value="<?= htmlspecialchars((string)$critVal) ?>">
+  </div>
+  <?php endforeach; ?>
+  <p style="font-size:.85rem;margin:0 0 .9rem;">Report total: <strong id="report-mark-total">-</strong> / <?= $reportMax ?></p>
+  <?php else: ?>
   <div class="field">
     <label for="report-mark">Report mark (0–<?= $reportMax ?>)</label>
-    <input type="number" id="report-mark" min="0" max="<?= $reportMax ?>" step="0.5"
+    <input type="number" class="report-input" id="report-mark" min="0" max="<?= $reportMax ?>" step="0.5"
            value="<?= htmlspecialchars($record['report_mark'] ?? '') ?>">
   </div>
+  <?php endif; ?>
   <div class="field">
     <label for="report-comment">Report feedback (will appear in Moodle feedback column)</label>
     <textarea id="report-comment" rows="6"><?= htmlspecialchars($record['report_comment'] ?? '') ?></textarea>
@@ -233,11 +254,38 @@ function showView(fmt) {
 const demoSubtotal = <?= json_encode($sessionSubtotal) ?>;
 const REPORT_MAX   = <?= $reportMax ?>;
 const MARKER_ID    = <?= json_encode($currentMarkerId) ?>;
+// Maximum per criterion when the report mark is split; empty object = single mark.
+const REPORT_CRITERIA = <?= json_encode((object)array_map('report_criterion_max', $reportCriteria)) ?>;
+const REPORT_LABELS   = <?= json_encode((object)array_map(fn($c) => $c['label'] ?? '', $reportCriteria)) ?>;
+const SPLIT_REPORT    = Object.keys(REPORT_CRITERIA).length > 0;
 
-document.getElementById('report-mark').addEventListener('input', updateTotal);
+document.querySelectorAll('.report-input').forEach(el => el.addEventListener('input', updateTotal));
+
+function criterionInput(key) {
+  return document.getElementById('report-mark-' + key);
+}
+
+// Sum of the entered report mark(s); NaN until every mark is entered.
+function currentReportMark() {
+  if (!SPLIT_REPORT) return parseFloat(document.getElementById('report-mark').value);
+  let total = 0;
+  for (const key of Object.keys(REPORT_CRITERIA)) {
+    const v = parseFloat(criterionInput(key).value);
+    if (isNaN(v)) return NaN;
+    total += v;
+  }
+  return total;
+}
 
 function updateTotal() {
-  const rMark = parseFloat(document.getElementById('report-mark').value);
+  if (SPLIT_REPORT) {
+    const entered = Object.keys(REPORT_CRITERIA)
+      .map(key => parseFloat(criterionInput(key).value))
+      .filter(v => !isNaN(v));
+    document.getElementById('report-mark-total').textContent =
+      entered.length ? entered.reduce((a, b) => a + b, 0).toFixed(1) : '-';
+  }
+  const rMark = currentReportMark();
   if (isNaN(rMark)) {
     document.getElementById('projected-total').textContent = '-';
     return;
@@ -246,12 +294,40 @@ function updateTotal() {
   document.getElementById('projected-total').textContent = total + ' / 100';
 }
 
+// Returns an error message, or '' if the entered mark(s) are valid.
+function reportMarkError() {
+  if (!SPLIT_REPORT) {
+    const v = parseFloat(document.getElementById('report-mark').value);
+    return (isNaN(v) || v < 0 || v > REPORT_MAX)
+      ? 'Enter a report mark between 0 and ' + REPORT_MAX + '.' : '';
+  }
+  for (const [key, max] of Object.entries(REPORT_CRITERIA)) {
+    const v = parseFloat(criterionInput(key).value);
+    if (isNaN(v) || v < 0 || v > max) {
+      return 'Enter a mark between 0 and ' + max + ' for ' + (REPORT_LABELS[key] || key) + '.';
+    }
+  }
+  return '';
+}
+
 updateTotal();
 
 async function doSave() {
   const btn    = document.getElementById('btn-save');
   const status = document.getElementById('save-status');
-  const rMark  = parseFloat(document.getElementById('report-mark').value);
+  const rMark  = currentReportMark();
+  const payload = {
+    mode:           'report',
+    matric:         <?= json_encode($record['matric']) ?>,
+    report_mark:    rMark,
+    report_comment: document.getElementById('report-comment').value.trim(),
+  };
+  if (SPLIT_REPORT) {
+    payload.report_marks = {};
+    for (const key of Object.keys(REPORT_CRITERIA)) {
+      payload.report_marks[key] = parseFloat(criterionInput(key).value);
+    }
+  }
 
   btn.disabled = true;
   status.textContent = 'Saving…';
@@ -261,12 +337,7 @@ async function doSave() {
     res = await fetch('save.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode:           'report',
-        matric:         <?= json_encode($record['matric']) ?>,
-        report_mark:    rMark,
-        report_comment: document.getElementById('report-comment').value.trim(),
-      }),
+      body: JSON.stringify(payload),
     });
   } catch(e) {
     status.textContent = 'Error: ' + e.message;
@@ -299,9 +370,9 @@ async function doSave() {
 }
 
 document.getElementById('btn-save').addEventListener('click', async () => {
-  const rMark = parseFloat(document.getElementById('report-mark').value);
-  if (isNaN(rMark) || rMark < 0 || rMark > REPORT_MAX) {
-    alert('Enter a report mark between 0 and ' + REPORT_MAX + '.');
+  const err = reportMarkError();
+  if (err) {
+    alert(err);
     return;
   }
   await doSave();

@@ -52,7 +52,7 @@ function techFeedback(array $r, bool $verboseQA = false): string {
 
     if ($authorship === 'fail') {
         $comment = trim($r['misconduct_comment'] ?? '');
-        $out = 'Authorship of the submitted code could not be confirmed at the demonstration. This case has been referred under the academic misconduct procedure.';
+        $out = 'Authorship of the ' . ui_text('authorship_subject') . ' could not be confirmed at the demonstration. This case has been referred under the academic misconduct procedure.';
         if ($comment !== '') $out .= ' Marker\'s observations: ' . $comment;
         return $out;
     }
@@ -64,7 +64,7 @@ function techFeedback(array $r, bool $verboseQA = false): string {
     $featureStr = implode(', ', $listed);
 
     $out = $tierLabels[$tier] ?? 'Enhancement tier: ' . $tier . '.';
-    if ($featureStr) $out .= ' Features implemented: ' . $featureStr . '.';
+    if ($featureStr) $out .= ' ' . ui_text('features_feedback_prefix') . ': ' . $featureStr . '.';
 
     $qa          = $r['qa'] ?? [];
     $noItems     = [];
@@ -278,8 +278,20 @@ function buildFeedbackComment(array $r, bool $verboseQA = false): string {
             ? 'Report not yet marked.'
             : 'Report not submitted.'
         );
-        $blocks[] = '<p><strong>' . $esc("Critical Report ({$reportMax}%): {$reportM}/{$reportMax}") . '</strong>'
-                  . '<br>' . $esc($rComment) . '</p>';
+        $reportLabel = ui_text('report_label');
+        $block       = '<p><strong>' . $esc("{$reportLabel} ({$reportMax}%): {$reportM}/{$reportMax}") . '</strong>';
+
+        // Per-criterion breakdown, when the report mark is split across criteria
+        $critParts = [];
+        foreach (report_criteria() as $critKey => $crit) {
+            if (!isset($r['report_marks'][$critKey])) continue;
+            $critMark = floatval($r['report_marks'][$critKey]);
+            $critMax  = report_criterion_max($crit);
+            $critParts[] = ($crit['label'] ?? $critKey) . ": {$critMark}/{$critMax}";
+        }
+        if ($critParts) $block .= '<br>' . $esc(implode('; ', $critParts));
+
+        $blocks[] = $block . '<br>' . $esc($rComment) . '</p>';
     }
 
     $blocks[] = '<p><strong>' . $esc("Overall: {$total}/100 - {$passStatus} (pass mark: {$passMark}%)") . '</strong></p>';

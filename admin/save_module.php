@@ -125,6 +125,37 @@ foreach ($_POST['design_criteria'] ?? [] as $crit) {
     ];
 }
 
+// ── Parse report criteria ──────────────────────────────────────────
+// Optional split of the report mark. No rows = a single, unsplit report mark.
+$reportCriteria = [];
+foreach ($_POST['report_criteria'] ?? [] as $crit) {
+    $key = trim($crit['key'] ?? '');
+    if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key)) continue;
+    $reportCriteria[$key] = [
+        'label'       => trim($crit['label'] ?? '') ?: $key,
+        'description' => trim($crit['description'] ?? ''),
+        'weight'      => max(0.0, min(1.0, round((float)($crit['weight'] ?? 0), 10))),
+    ];
+}
+if ($reportCriteria) {
+    $reportWeight = $weights['report'] ?? 0.0;
+    $critSum      = array_sum(array_column($reportCriteria, 'weight'));
+    if ($reportWeight <= 0) {
+        $errors[] = 'Report criteria are defined, but the Report weight is 0. Set a Report weight first, or remove the criteria.';
+    } elseif (abs($critSum - $reportWeight) > 0.001) {
+        $errors[] = 'Report criteria weights must sum to the Report weight of ' . number_format($reportWeight, 2)
+                  . ' (current sum: ' . number_format($critSum, 4) . ').';
+    }
+}
+
+// ── Parse wording overrides ────────────────────────────────────────
+// Only known keys are accepted; blank means "use the default".
+$uiText = [];
+foreach (array_keys(ui_text_defaults()) as $uiKey) {
+    $val = trim((string)($_POST['ui_text'][$uiKey] ?? ''));
+    if ($val !== '') $uiText[$uiKey] = $val;
+}
+
 if (!empty($errors)) {
     $_SESSION['module_errors'] = $errors;
     header('Location: module_edit.php');
@@ -148,6 +179,11 @@ $data = [
     'pass_mark'    => defined('PASS_MARK')    ? PASS_MARK    : 40,
     'markers'      => defined('MARKERS')      ? MARKERS      : [],
     'mark_weights'         => $weights,
+    'report_criteria'      => $reportCriteria,
+    'ui_text'              => $uiText,
+    // No editing UI for these yet — carry them through so saving doesn't drop them
+    'demo_criteria_labels' => defined('DEMO_CRITERIA_LABELS') ? DEMO_CRITERIA_LABELS : [],
+    'kq_criterion_map'     => defined('KQ_CRITERION_MAP')     ? KQ_CRITERION_MAP     : [],
     'timer_total'          => $timerTotal,
     'timer_break'          => $timerBreak,
     'tier_ranges'          => $tierRanges,

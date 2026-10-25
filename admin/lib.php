@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../src/lib/records.php';
+require_once __DIR__ . '/../src/lib/config_helpers.php';
 require_once __DIR__ . '/../src/lib/layout.php';
 
 if (!function_exists('array_is_list')) {
@@ -61,6 +62,14 @@ function generate_config(array $d): string {
     $out .= "define('DATA_DIR',        __DIR__ . '/data/');\n";
     $out .= "define('SUBMISSIONS_DIR', __DIR__ . '/submissions/');\n\n";
     $out .= "define('MARK_WEIGHTS', " . php_array_export($d['mark_weights']) . ");\n\n";
+    if (!empty($d['report_criteria'])) {
+        $out .= "// ── Report criteria — the report mark is split across these (weights sum to MARK_WEIGHTS['report']) ──\n";
+        $out .= "define('REPORT_CRITERIA', " . php_array_export($d['report_criteria']) . ");\n\n";
+    }
+    if (!empty($d['ui_text'])) {
+        $out .= "// ── Wording overrides for the marking pages (anything not listed uses the default) ──\n";
+        $out .= "define('UI_TEXT', " . php_array_export($d['ui_text']) . ");\n\n";
+    }
     $out .= "define('TIMER_TOTAL', " . (int)$d['timer_total'] . ");\n";
     $out .= "define('TIMER_BREAK', " . (int)$d['timer_break'] . ");\n\n";
     $out .= "define('MARKERS', " . php_array_export($d['markers']) . ");\n\n";
@@ -71,9 +80,9 @@ function generate_config(array $d): string {
     $out .= "// ── Feedback strings ──────────────────────────────────────────────────────────\n";
     $out .= "define('FEEDBACK_TIER_LABELS', " . php_array_export($d['feedback_tier_labels']) . ");\n\n";
     $out .= "// ── Demo criteria labels ──────────────────────────────────────────────────────\n";
-    $out .= "define('DEMO_CRITERIA_LABELS', " . php_array_export($d['demo_criteria_labels']) . ");\n\n";
+    $out .= "define('DEMO_CRITERIA_LABELS', " . php_array_export($d['demo_criteria_labels'] ?? []) . ");\n\n";
     $out .= "// ── KQ criterion map ──────────────────────────────────────────────────────────\n";
-    $out .= "define('KQ_CRITERION_MAP', " . php_array_export($d['kq_criterion_map']) . ");\n\n";
+    $out .= "define('KQ_CRITERION_MAP', " . php_array_export($d['kq_criterion_map'] ?? []) . ");\n\n";
     $out .= "// ── Knowledge-check questions ─────────────────────────────────────────────────\n";
     $out .= "define('KNOWLEDGE_QUESTIONS', " . php_array_export($d['knowledge_questions']) . ");\n\n";
     $out .= "// ── Feature Q&A question banks ────────────────────────────────────────────────\n";
@@ -124,6 +133,8 @@ function default_config_details(): array {
         ],
         'demo_criteria_labels' => [],
         'kq_criterion_map'     => [],
+        'report_criteria'      => [],
+        'ui_text'              => [],
         'questions'           => [],
         'knowledge_questions' => [],
         'design_criteria'     => [

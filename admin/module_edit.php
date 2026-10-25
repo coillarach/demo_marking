@@ -93,6 +93,8 @@ $fbLabels   = defined('FEEDBACK_TIER_LABELS') ? FEEDBACK_TIER_LABELS : [];
 $questions      = defined('QUESTIONS')        ? QUESTIONS        : [];
 $kqSections     = defined('KNOWLEDGE_QUESTIONS') ? KNOWLEDGE_QUESTIONS : [];
 $designCriteria = defined('DESIGN_CRITERIA')  ? DESIGN_CRITERIA  : [];
+$reportCriteria = report_criteria();
+$uiText         = defined('UI_TEXT') && is_array(UI_TEXT) ? UI_TEXT : [];
 
 $tierCssOptions = ['tier-advanced','tier-intermediate','tier-basic','tier-partial','tier-fail'];
 
@@ -137,6 +139,7 @@ render_page_header($currentModuleId . ' — Module Configuration', $navLinks, $c
       <button type="button" class="tab-btn" data-tab="tab-features">Features</button>
       <button type="button" class="tab-btn" data-tab="tab-design">Design &amp; Usability</button>
       <button type="button" class="tab-btn" data-tab="tab-tiers">Tiers</button>
+      <button type="button" class="tab-btn" data-tab="tab-report">Report &amp; Wording</button>
       <button type="button" class="tab-btn" data-tab="tab-knowledge">Knowledge Questions</button>
     </div>
 
@@ -417,6 +420,55 @@ render_page_header($currentModuleId . ' — Module Configuration', $navLinks, $c
       <button type="button" class="btn-add" onclick="addFeedbackRow()">+ Add feedback label</button>
     </div>
 
+    <!-- ── Tab 5: Report & Wording ─────────────────────────────────── -->
+    <div id="tab-report" class="tab-panel">
+      <h3>Report Criteria <button type="button" class="info-btn" onclick="toggleHelp(this)" aria-label="Show help" aria-expanded="false">&#x2139;</button></h3>
+      <div class="help-box" hidden>
+        <p>By default the report is marked with a single number out of the <strong>Report</strong> weight (Weights &amp; Timers tab). If the report is assessed against several criteria, add one row per criterion here and markers will enter a separate mark for each. The total is stored as the report mark, so exports and totals work as normal.</p>
+        <p>Each criterion needs a unique <strong>key</strong> (letters, digits and underscores only), a <strong>label</strong> shown to markers and in the feedback, an optional <strong>hint</strong> shown beneath the label, and a <strong>weight</strong>. Weights are fractions of the whole module, like the Weights tab — for example, 0.25 means the criterion is worth 25 of the 100 marks. They must add up to the Report weight. Leave the table empty to keep a single report mark.</p>
+      </div>
+      <table class="dyn-table" id="report-crit-table">
+        <thead>
+          <tr>
+            <th class="col-key">Key</th>
+            <th>Label</th>
+            <th>Hint (optional)</th>
+            <th class="col-num">Weight</th>
+            <th class="col-action"></th>
+          </tr>
+        </thead>
+        <tbody id="report-crit-body">
+          <?php $rci = 0; foreach ($reportCriteria as $rckey => $rc): ?>
+          <tr>
+            <td><input type="text" name="report_criteria[<?= $rci ?>][key]" value="<?= h($rckey) ?>" required pattern="[a-zA-Z_][a-zA-Z0-9_]*"></td>
+            <td><input type="text" name="report_criteria[<?= $rci ?>][label]" value="<?= h($rc['label'] ?? '') ?>" required></td>
+            <td><input type="text" name="report_criteria[<?= $rci ?>][description]" value="<?= h($rc['description'] ?? '') ?>"></td>
+            <td><input type="number" name="report_criteria[<?= $rci ?>][weight]" class="report-crit-weight" min="0" max="1" step="0.01" required
+                       value="<?= sprintf('%.2f', $rc['weight'] ?? 0) ?>" oninput="checkReportCritSum()"></td>
+            <td class="col-action"><button type="button" class="btn-remove" onclick="removeRow(this); checkReportCritSum()">&#x2715;</button></td>
+          </tr>
+          <?php $rci++; endforeach; ?>
+        </tbody>
+      </table>
+      <button type="button" class="btn-add" onclick="addReportCriterion()">+ Add criterion</button>
+      <div class="weight-sum" id="report-crit-sum"></div>
+
+      <h3 style="margin-top:1.5rem;">Wording <button type="button" class="info-btn" onclick="toggleHelp(this)" aria-label="Show help" aria-expanded="false">&#x2139;</button></h3>
+      <div class="help-box" hidden>
+        <p>The marking pages use wording written for a code-based assessment (for example, "Features Present" and "Critical Report"). If your assessment is different, replace any of these. A blank field keeps the default, which is shown greyed out as the placeholder.</p>
+      </div>
+      <div class="field-row" style="flex-direction:column;align-items:stretch;max-width:760px;">
+        <?php foreach (ui_text_labels() as $uk => $ulabel): ?>
+        <div class="field">
+          <label for="ui_<?= h($uk) ?>"><?= h($ulabel) ?></label>
+          <input type="text" id="ui_<?= h($uk) ?>" name="ui_text[<?= h($uk) ?>]"
+                 value="<?= h((string)($uiText[$uk] ?? '')) ?>"
+                 placeholder="<?= h(ui_text_defaults()[$uk]) ?>">
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+
     <!-- ── Tab 4: Knowledge Questions ────────────────────────────── -->
     <div id="tab-knowledge" class="tab-panel">
       <h3>Knowledge Check Sections <button type="button" class="info-btn" onclick="toggleHelp(this)" aria-label="Show help" aria-expanded="false">&#x2139;</button></h3>
@@ -547,6 +599,41 @@ function checkWeightSum() {
   const ok   = Math.abs(sum - 1.0) < 0.001;
   msg.textContent = 'Sum: ' + sum.toFixed(4) + (ok ? ' ✓' : ' — must equal 1.0');
   msg.className   = 'weight-sum ' + (ok ? 'weight-ok' : 'weight-bad');
+  checkReportCritSum();
+}
+
+// ── Report criteria ────────────────────────────────────────────────
+let reportCritIdx = <?= $rci ?>;
+
+function checkReportCritSum() {
+  const rows = document.querySelectorAll('#report-crit-body tr');
+  const msg  = document.getElementById('report-crit-sum');
+  if (!rows.length) {
+    msg.textContent = 'No criteria — the report is marked with a single mark.';
+    msg.className   = 'weight-sum';
+    return;
+  }
+  const sum    = [...document.querySelectorAll('.report-crit-weight')]
+    .reduce((s, el) => s + (parseFloat(el.value) || 0), 0);
+  const target = parseFloat(document.getElementById('w_report')?.value) || 0;
+  const ok     = target > 0 && Math.abs(sum - target) < 0.001;
+  msg.textContent = 'Criteria sum: ' + sum.toFixed(4) + ' of Report weight ' + target.toFixed(4)
+                  + (ok ? ' ✓' : ' — must match the Report weight');
+  msg.className   = 'weight-sum ' + (ok ? 'weight-ok' : 'weight-bad');
+}
+
+function addReportCriterion() {
+  const idx = reportCritIdx++;
+  const tr  = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" name="report_criteria[${idx}][key]" required pattern="[a-zA-Z_][a-zA-Z0-9_]*"></td>
+    <td><input type="text" name="report_criteria[${idx}][label]" required></td>
+    <td><input type="text" name="report_criteria[${idx}][description]"></td>
+    <td><input type="number" name="report_criteria[${idx}][weight]" class="report-crit-weight" min="0" max="1" step="0.01" required value="0.00" oninput="checkReportCritSum()"></td>
+    <td class="col-action"><button type="button" class="btn-remove" onclick="removeRow(this); checkReportCritSum()">&#x2715;</button></td>`;
+  document.getElementById('report-crit-body').appendChild(tr);
+  tr.querySelector('input').focus();
+  checkReportCritSum();
 }
 checkWeightSum();
 
