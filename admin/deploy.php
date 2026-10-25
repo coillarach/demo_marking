@@ -187,11 +187,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
     <div class="field">
       <label for="target_dir">Deployment directory (absolute path)</label>
-      <input type="text" id="target_dir" name="target_dir" required
-             placeholder="<?= htmlspecialchars($suggestedBase) ?>/<?= strtolower(htmlspecialchars($configParam)) ?>"
-             value="<?= htmlspecialchars($savedTarget) ?>">
+      <div style="display:flex;gap:.5rem;align-items:center;">
+        <input type="text" id="target_dir" name="target_dir" required style="flex:1;"
+               placeholder="<?= htmlspecialchars($suggestedBase) ?>/<?= strtolower(htmlspecialchars($configParam)) ?>"
+               aria-describedby="target_dir_hint"
+               value="<?= htmlspecialchars($savedTarget) ?>">
+        <button type="button" class="btn-secondary" id="use-suggested">Use suggested</button>
+      </div>
+      <span id="target_dir_hint" style="font-size:.75rem;color:#64748b;">
+        Leave empty and press <kbd>Tab</kbd> (or click <em>Use suggested</em>) to accept the greyed-out path.
+      </span>
       <?php if ($savedTarget !== ''): ?>
-        <span style="font-size:.75rem;color:#64748b;">Last used: <code><?= htmlspecialchars($savedTarget) ?></code></span>
+        <br><span style="font-size:.75rem;color:#64748b;">Last used: <code><?= htmlspecialchars($savedTarget) ?></code></span>
       <?php endif; ?>
     </div>
     <div style="display:flex;gap:1rem;align-items:center;margin-top:.5rem;">
@@ -202,5 +209,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 </main>
+<script>
+// Placeholders can't be accepted natively, so copy the suggested path into the field.
+const targetInput  = document.getElementById('target_dir');
+const useSuggested = document.getElementById('use-suggested');
+
+function acceptSuggested() {
+  targetInput.value = targetInput.placeholder;
+  targetInput.focus();
+  targetInput.setSelectionRange(targetInput.value.length, targetInput.value.length);
+}
+
+// Tab in an empty field accepts the suggestion and keeps focus there (like shell
+// completion), so tabbing straight past the field can never silently fill it in:
+// a second Tab moves on as normal. Shift+Tab is left alone.
+targetInput.addEventListener('keydown', e => {
+  if (e.key === 'Tab' && !e.shiftKey && targetInput.value === '') {
+    e.preventDefault();
+    acceptSuggested();
+  }
+});
+useSuggested.addEventListener('click', acceptSuggested);
+</script>
 </body>
 </html>
