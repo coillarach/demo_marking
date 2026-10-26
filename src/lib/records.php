@@ -25,7 +25,9 @@ function read_marksheet_csv(string $csvFile): array {
 }
 
 function read_marksheet_matrics(string $csvFile): array {
-    $matrics = array_keys(read_marksheet_csv($csvFile)['rows']);
+    // PHP casts numeric-string keys to int; callers (JSON for the autocomplete,
+    // strict in_array in filename matching) need them as strings.
+    $matrics = array_map('strval', array_keys(read_marksheet_csv($csvFile)['rows']));
     sort($matrics);
     return $matrics;
 }
@@ -91,7 +93,7 @@ function extract_matric_candidates(string $filename): array {
     foreach ($m[0] as $run) {
         if (strlen($run) === 8) $candidates[$run] = true;
     }
-    return array_keys($candidates);
+    return array_map('strval', array_keys($candidates)); // keys are cast to int by PHP
 }
 
 /** status: matched | ambiguous | not_found | no_candidate */
