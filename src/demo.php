@@ -1168,84 +1168,117 @@ function toggleCursory(cb) {
 }
 
 // ─── Q&A builder ──────────────────────────────────────────────────
+// Reconciles #qa-container with the ticked features instead of rebuilding it:
+// sections for newly ticked features are created, sections for unticked features
+// are removed (which discards their answers), and every other section is kept
+// as-is so answers already entered are never lost.
+function qaSectionHasAnswers(wrap) {
+  return !!wrap.querySelector('input[type=radio]:checked')
+      || [...wrap.querySelectorAll('.qa-custom-q')].some(i => i.value.trim() !== '');
+}
+
+// Mark a section cursory (or not) when the set of ticked tiers changes. A section
+// that already has answers is never silently skipped: it gets the toggle, unchecked.
+function applyCursory(wrap, cursory) {
+  const header = wrap.querySelector('.qa-feature-header');
+  const label  = header.querySelector('.cursory-toggle');
+  if (!cursory) {
+    if (label) label.remove();
+    wrap.classList.remove('cursory');
+    wrap.querySelectorAll('input[type=radio]').forEach(r => r.disabled = false);
+    return;
+  }
+  if (label) return; // already cursory-capable; keep the marker's own choice
+  const skip = !qaSectionHasAnswers(wrap);
+  const toggle = document.createElement('label');
+  toggle.className = 'cursory-toggle';
+  toggle.innerHTML = `<input type="checkbox"${skip ? ' checked' : ''} onchange="toggleCursory(this)">
+    Skip &mdash; cursory check sufficient`;
+  header.appendChild(toggle);
+  toggleCursory(toggle.querySelector('input'));
+}
+
+function createQASection(featureKey, tier) {
+  const fq = CONFIG.features[featureKey];
+  const wrap = document.createElement('div');
+  wrap.className = 'qa-feature';
+  wrap.dataset.feature = featureKey;
+
+  const badgeCls = { basic:'badge-basic', intermediate:'badge-intermediate', advanced:'badge-advanced' }[tier];
+  wrap.innerHTML = `
+    <div class="qa-feature-header">
+      <span class="tier-badge ${badgeCls}">${tier}</span>
+      ${fq.label}
+    </div>
+    <div class="qa-feature-body" id="qa-body-${featureKey}"></div>
+  `;
+
+  const body = wrap.querySelector(`#qa-body-${featureKey}`);
+  fq.questions.forEach((item, idx) => {
+    const qid = `qa_${featureKey}_${idx}`;
+    body.innerHTML += `
+      <div class="qa-item">
+        <div class="qa-q">${item.q}</div>
+        <div class="qa-answers">
+          <label class="ans-well"><input type="radio" name="${qid}" value="well"> Explained well</label>
+          <label><input type="radio" name="${qid}" value="prompt"> With prompting</label>
+          <label class="ans-no"><input type="radio" name="${qid}" value="no"> Could not explain</label>
+        </div>
+      </div>`;
+  });
+
+  // Add custom question button at the bottom of the feature body
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn-add-qa';
+  addBtn.textContent = '+ Add custom question';
+  addBtn.addEventListener('click', () => addCustomQA(addBtn, featureKey));
+  body.appendChild(addBtn);
+  return wrap;
+}
+
 function buildQA() {
   const container = document.getElementById('qa-container');
-  container.innerHTML = '';
 
   const checked = [...document.querySelectorAll('input[name=features]:checked')]
-    .map(cb => cb.value);
+    .map(cb => cb.value)
+    .filter(k => CONFIG.features[k]);
+
+  // Drop sections for unticked features (their answers go with them)
+  container.querySelectorAll('.qa-feature').forEach(wrap => {
+    const fk = wrap.dataset.feature;
+    if (!checked.includes(fk)) {
+      wrap.remove();
+      delete qaCustomCount[fk]; // custom items are gone; numbering restarts if re-ticked
+    }
+  });
+  container.querySelectorAll(':scope > :not(.qa-feature)').forEach(el => el.remove()); // placeholder text
 
   if (checked.length === 0) {
-    container.innerHTML = '<p style="color:#94a3b8;font-size:.875rem;">Tick features in Section 3 to load questions.</p>';
+    container.innerHTML = '<p class="qa-placeholder" style="color:#94a3b8;font-size:.875rem;">Tick features in Section 3 to load questions.</p>';
     return;
   }
 
   // Determine highest tier present
-  const hasAdvanced     = checked.some(k => CONFIG.features[k]?.tier === 'advanced');
-  const hasIntermediate = checked.some(k => CONFIG.features[k]?.tier === 'intermediate');
+  const hasAdvanced     = checked.some(k => CONFIG.features[k].tier === 'advanced');
+  const hasIntermediate = checked.some(k => CONFIG.features[k].tier === 'intermediate');
 
   // Order: advanced first, then intermediate, then basic
   const order = ['advanced','intermediate','basic'];
   const byTier = { advanced: [], intermediate: [], basic: [] };
-  checked.forEach(k => {
-    const f = CONFIG.features[k];
-    if (f) byTier[f.tier]?.push(k);
-  });
+  checked.forEach(k => byTier[CONFIG.features[k].tier]?.push(k));
 
   order.forEach(tier => {
     byTier[tier].forEach(featureKey => {
-      const fq = CONFIG.features[featureKey];
-      if (!fq) return;
+      let wrap = container.querySelector(`.qa-feature[data-feature="${featureKey}"]`);
+      if (!wrap) wrap = createQASection(featureKey, tier);
 
-      // Mark as cursory if a higher tier is present
+      // Cursory if a higher tier is present
       const cursory = (tier === 'basic' && (hasAdvanced || hasIntermediate))
                    || (tier === 'intermediate' && hasAdvanced);
+      applyCursory(wrap, cursory);
 
-      const wrap = document.createElement('div');
-      wrap.className = 'qa-feature' + (cursory ? ' cursory' : '');
-      wrap.dataset.feature = featureKey;
-
-      const badgeCls = { basic:'badge-basic', intermediate:'badge-intermediate', advanced:'badge-advanced' }[tier];
-      wrap.innerHTML = `
-        <div class="qa-feature-header">
-          <span class="tier-badge ${badgeCls}">${tier}</span>
-          ${fq.label}
-          ${cursory ? `<label class="cursory-toggle">
-            <input type="checkbox" checked onchange="toggleCursory(this)">
-            Skip &mdash; cursory check sufficient
-          </label>` : ''}
-        </div>
-        <div class="qa-feature-body" id="qa-body-${featureKey}"></div>
-      `;
-
-      const body = wrap.querySelector(`#qa-body-${featureKey}`);
-      fq.questions.forEach((item, idx) => {
-        const qid = `qa_${featureKey}_${idx}`;
-        body.innerHTML += `
-          <div class="qa-item">
-            <div class="qa-q">${item.q}</div>
-            <div class="qa-answers">
-              <label class="ans-well"><input type="radio" name="${qid}" value="well"> Explained well</label>
-              <label><input type="radio" name="${qid}" value="prompt"> With prompting</label>
-              <label class="ans-no"><input type="radio" name="${qid}" value="no"> Could not explain</label>
-            </div>
-          </div>`;
-      });
-
-      // Add custom question button at the bottom of the feature body
-      const addBtn = document.createElement('button');
-      addBtn.type = 'button';
-      addBtn.className = 'btn-add-qa';
-      addBtn.textContent = '+ Add custom question';
-      addBtn.addEventListener('click', () => addCustomQA(addBtn, featureKey));
-      body.appendChild(addBtn);
-
-      // Disable radios in cursory sections to match the checked checkbox state
-      if (cursory) {
-        wrap.querySelectorAll('input[type=radio]').forEach(r => r.disabled = true);
-      }
-
-      container.appendChild(wrap);
+      container.appendChild(wrap); // (re)appending moves existing nodes, keeping their state
     });
   });
 }
